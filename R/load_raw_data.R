@@ -1,10 +1,10 @@
 #load tidyverse
 library(tidyverse)
 
-#function to find files with a data-raw/M extension
+#function to find files with a data-raw/AF_Data_ extension
 fileNames<-Sys.glob("data-raw/AF_Data_*.csv")
 
-#create a load_data_files function 
+#create a function to load data files
 load_data_files<-function(fN){
   lapply(fN, function(x)
   {loadfiles<-read_csv(x,
@@ -102,6 +102,6 @@ load_data_files<-function(fN){
   })
 }
 
-#create variable called data_frames which contains the dataframes with the data-raw/M extension
+#create variable called data_frames which contains the dataframes with the data-raw/AF_Data_ extension
 data_frames <- load_data_files(fileNames)
 
