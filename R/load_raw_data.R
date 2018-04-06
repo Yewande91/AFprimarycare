@@ -1,7 +1,7 @@
 #load tidyverse
 library(tidyverse)
 
-#function to find files with a data-raw/AF_Data_ extension
+#function to find file names with a data-raw/AF_Data_ extension
 fileNames<-Sys.glob("data-raw/AF_Data_*.csv")
 
 #create a function to load data files
@@ -102,6 +102,6 @@ load_data_files<-function(fN){
   })
 }
 
-#create variable called data_frames which contains the dataframes with the data-raw/AF_Data_ extension
+#create variable called data_frames which contains the list of dataframes with the data-raw/AF_Data_ extension
 data_frames <- load_data_files(fileNames)
 
