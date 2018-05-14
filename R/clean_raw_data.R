@@ -27,13 +27,28 @@ cutoff_date <- as.Date("2017-11-17")
 #   20th century year with the same last two digits,
 #   and if not, the date is unchanged
 ##firstly, for one dataframe vector of strings is created showing names of only the date columns
+##pull up the names that dont have 'Issue' in them
 ##secondly, a vector of quosures is created
 ##loop over vector of quosures to change certain dates to correct century
 #- this will be entered into clean_dataframes
+#second part of function works on col names with 'Issue' in them 
 
-
-correct_century_sl<-function(tib, cutoff_date){
+correct_century_sl<-function(tib){
+  cutoff_date <- as.Date("2017-11-17")
   date_cols_s<-colnames(tib)[grepl( "date" , names( tib) ) ]
+  date_cols_s<-date_cols_s[!grepl("Issue",date_cols_s)]
+  date_cols_q<-lapply(date_cols_s,sym)
+  for(dc in date_cols_q){
+    tib <- tib %>% mutate(UQE(dc) := if_else(
+      UQ(dc) > cutoff_date, 
+      as.Date(format(UQ(dc), "19%y-%m-%d")), 
+      as.Date(format(UQ(dc), "%Y-%m-%d"))
+    ))
+  }
+  
+  cutoff_date <- as.Date("2020-01-01")
+  date_cols_s<-colnames(tib)[grepl( "date" , names( tib) ) ]
+  date_cols_s<-date_cols_s[grepl("Issue",date_cols_s)]
   date_cols_q<-lapply(date_cols_s,sym)
   for(dc in date_cols_q){
     tib <- tib %>% mutate(UQE(dc) := if_else(
@@ -104,7 +119,7 @@ clean_dataframes <- function(list_DF, hounslow){
   cleaned_list <- lapply(list_DF, function(y)
   {y %>% mutate_if(is.character, funs(replace(., . == "Unknown", NA_character_))) %>%
       fix_colnames %>% 
-      correct_century_sl(cutoff_date=cutoff_date) %>% 
+      correct_century_sl() %>% 
       fix_agecol %>%
       nadelete(desiredCol="Registered.practice.ID") %>%
       practices_only_in_houslow(hounslow = hounslow) %>%
