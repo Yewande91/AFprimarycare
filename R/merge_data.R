@@ -755,61 +755,39 @@ df11merge<-rename(df11merge,anticoagulation.event.date="Event.date")
 #left join patient id and event date from df2merge into df11merge
 df11merge<-left_join(df11merge,select(.data=df2merge,Patient.ID,Event.date),by="Patient.ID",copy = FALSE)
 
-#create a new col to test whether anticoagulation.event.date col is identical to issue start date col
-#true if identical and false if not identical
-#true in 97416 observations and false in 18989 observations
-df11merge$datecolsidentical<-df11merge$anticoagulation.event.date==df11merge$Issue.start.date
-
-#create a subset of df11merge where df11merge$datecolsidentical is false
-df11merge_subset<-subset(df11merge,df11merge$datecolsidentical==FALSE)
-
-#Create a new col in df11merge_subset to check whether for all the 18989 observations
-#whether the anticoagulation.event.date col is < issue start date col
-#this is true in 18314 observations but false in 675 observations
-df11merge_subset$anticoagulation.event.date.less.than.issue.start.date<-
-  df11merge_subset$anticoagulation.event.date<df11merge_subset$Issue.start.date
-
-#create a subset of df11merge_subset where df11merge_subset$anticoagulation.event.date.less.than.issue.start.date is false
-#for the 675 observations the issue start date year is for the most part 1917 or 1918 but not in all cases
-df11merge_subset2<-subset(df11merge_subset,df11merge_subset$anticoagulation.event.date.less.than.issue.start.date==FALSE)
-
-#create a new col in df11merge to see if anticoagulation.event.date.sameday.as.or.after.af.diagnosis.date, if so return the
-#anticoagulation event date
-df11merge$anticoagulation.event.date.sameday.or.after.af.diagnosis.date<-if_else(df11merge$anticoagulation.event.date>=df11merge$Event.date,df11merge$anticoagulation.event.date,as.Date(NA,"%Y-%m-%d"))
-
 #create a new col in df11merge to see if issue start.date is same day or after af diagnosis date, if so return the
 #issue start date
-df11merge$issue.start.date.sameday.or.after.af.diagnosis.date<-if_else(df11merge$Issue.start.date>=df11merge$Event.date,df11merge$Issue.start.date,as.Date(NA,"%Y-%m-%d"))
+df11merge$anticoagulation.issue.start.date.sameday.or.after.af.diagnosis.date<-if_else(df11merge$Issue.start.date>=df11merge$Event.date,df11merge$Issue.start.date,as.Date(NA,"%Y-%m-%d"))
 
-#create a subset of df11merge without NAs in the anticoagulation.event.date.sameday.or.after.af.diagnosis.date col
-df11merge_subset3<-df11merge[complete.cases(df11merge$anticoagulation.event.date.sameday.or.after.af.diagnosis.date),]
+#create a subset of df11merge without NAs in the issue.start.date.sameday.or.after.af.diagnosis.date col
+df11merge_subset<-df11merge[complete.cases(df11merge$anticoagulation.issue.start.date.sameday.or.after.af.diagnosis.date),]
 
 #show for a unique patient 
-#earliest anticoagulation event date, that is same day or after af event/diagnosis date
-df11merge_subset3<-df11merge_subset3 %>% group_by(Patient.ID) %>% 
-  slice(which.min(anticoagulation.event.date.sameday.or.after.af.diagnosis.date))
+#earliest issue start date, that is same day or after af event/diagnosis date
+df11merge_subset<-df11merge_subset %>% group_by(Patient.ID) %>% 
+  slice(which.min(anticoagulation.issue.start.date.sameday.or.after.af.diagnosis.date))
 
-#rename anticoagulation.event.date.sameday.or.after.af.diagnosis.date to earliest.anticoagulation.event.date.after.af.diagnosis.date
-df11merge_subset3<-rename(df11merge_subset3,earliest.anticoagulation.event.date.after.af.diagnosis.date="anticoagulation.event.date.sameday.or.after.af.diagnosis.date")
+#rename anticoagulation.issue.start.date.sameday.or.after.af.diagnosis.date to earliest.anticoagulation.issue.start.date.sameday.or.after.af.diagnosis.date
+df11merge_subset<-rename(df11merge_subset,earliest.anticoagulation.issue.start.date.sameday.or.after.af.diagnosis.date="anticoagulation.issue.start.date.sameday.or.after.af.diagnosis.date")
 
-#del cols in df11merge_subset3 i.e event.date, datecolsidentical, af.event.date.before.issue.start.date" 
-df11merge_subset3<-df11merge_subset3[,-c(20:21,23)]
+#del cols in df11merge_subset i.e event.date
+df11merge_subset<-df11merge_subset[,-c(20)]
 
-#rename Event.done.at col in df11merge_subset3
-df11merge_subset3<-rename(df11merge_subset3,Anticoagulation.Event.done.at="Event.done.at")
+#rename Event.done.at col in df11merge_subset
+df11merge_subset<-rename(df11merge_subset,Anticoagulation.Event.done.at="Event.done.at")
 
-#rename Event.done.at.ID col in df11merge_subset3
-df11merge_subset3<-rename(df11merge_subset3,Anticoagulation.Event.done.at.ID="Event.done.at.ID")
+#rename Event.done.at.ID col in df11merge_subset
+df11merge_subset<-rename(df11merge_subset,Anticoagulation.Event.done.at.ID="Event.done.at.ID")
 
-#leftjoin df11merge_subset3 into df2merge by patient id
-df2merge<-left_join(x=df2merge,y=df11merge_subset3,by="Patient.ID",copy = FALSE)
+#leftjoin df11merge_subset into df2merge by patient id
+df2merge<-left_join(x=df2merge,y=df11merge_subset,by="Patient.ID",copy = FALSE)
 
 #create Subset_df2merge where there are no NAs in the earliest.anticoagulation.event.date.after.af.diagnosis.date column
-Subset_df2merge<-df2merge[complete.cases(df2merge$earliest.anticoagulation.event.date.after.af.diagnosis.date),]
+Subset_df2merge<-df2merge[complete.cases(df2merge$earliest.anticoagulation.issue.start.date.sameday.or.after.af.diagnosis.date),]
 
-#using Subset_df2merge , create new columns to test if merged in duplicated columns from df11merge_subset3 are identical to those
+#using Subset_df2merge , create new columns to test if merged in duplicated columns from df11merge_subset are identical to those
 #already in df2merge,true =identical , false = not identical
-#duplicated cols from df11merge_subset3 are:
+#duplicated cols from df11merge_subset are:
 #"Deduction.date"                                          
 #"Registered.CCG"                                          
 #"Registered.practice"                                     
@@ -903,20 +881,20 @@ df11merge2<-rename(df11merge2,anticoagulation.event.date="Event.date")
 #left join patient id and event date from df2merge into df11merge2
 df11merge2<-left_join(df11merge2,select(.data=df2merge,Patient.ID,Event.date),by="Patient.ID",copy = FALSE)
 
-#create a new col in df11merge2 to see if anticoagulation.event.date is before the af diagnosis/event date, if so return the
-#anticoagulation event date
-df11merge2$anticoagulation.event.date.before.af.diagnosis.date<-if_else(df11merge2$anticoagulation.event.date<df11merge2$Event.date,df11merge2$anticoagulation.event.date,as.Date(NA,"%Y-%m-%d"))
+#create a new col in df11merge2 to see if anticoagulation.issue start date is before the af diagnosis/event date, if so return the
+#anticoagulation issue start date 
+df11merge2$anticoagulation.issue.start.date.before.af.diagnosis.date<-if_else(df11merge2$Issue.start.date<df11merge2$Event.date,df11merge2$Issue.start.date,as.Date(NA,"%Y-%m-%d"))
 
-#show df11merge2 without NAs in the anticoagulation.event.date.before.af.diagnosis.date col and assign to df11merge2_subset
-df11merge2_subset<-df11merge2[complete.cases(df11merge2$anticoagulation.event.date.before.af.diagnosis.date),]
+#show df11merge2 without NAs in the anticoagulation.issue.start.date.before.af.diagnosis.date col and assign to df11merge2_subset
+df11merge2_subset<-df11merge2[complete.cases(df11merge2$anticoagulation.issue.start.date.before.af.diagnosis.date),]
 
 #in df11merge2_subset show for a unique patient 
 #latest anticoagulation event date before af diagnosis/event date
 df11merge2_subset<-df11merge2_subset %>% group_by(Patient.ID) %>% 
-  slice(which.max(anticoagulation.event.date.before.af.diagnosis.date))
+  slice(which.max(anticoagulation.issue.start.date.before.af.diagnosis.date))
 
-#rename anticoagulation.event.date.before.af.diagnosis.date to latest anticoagulation.event.date.before.af.diagnosis.date
-df11merge2_subset<-rename(df11merge2_subset,latest.anticoagulation.event.date.before.af.diagnosis.date="anticoagulation.event.date.before.af.diagnosis.date")
+#rename anticoagulation.issue.start.date.before.af.diagnosis.date to latest.anticoagulation.issue.start.date.before.af.diagnosis.date
+df11merge2_subset<-rename(df11merge2_subset,latest.anticoagulation.issue.start.date.before.af.diagnosis.date="anticoagulation.issue.start.date.before.af.diagnosis.date")
 
 #del cols in df11merge2_subset i.e event.date
 df11merge2_subset<-df11merge2_subset[,-c(20)]
@@ -947,8 +925,8 @@ df11merge2_subset<-rename(df11merge2_subset,Repeat.drug2="Repeat.drug")
 #leftjoin df11merge2_subset into df2merge by patient ID
 df2merge<-left_join(x=df2merge,y=df11merge2_subset,by="Patient.ID",copy = FALSE)
 
-#create Subset_df2merge where there are no NAs in the latest.anticoagulation.event.date.before.af.diagnosis.date column
-Subset_df2merge<-df2merge[complete.cases(df2merge$latest.anticoagulation.event.date.before.af.diagnosis.date),]
+#create Subset_df2merge where there are no NAs in the latest.anticoagulation.issue.start.date.before.af.diagnosis.date column
+Subset_df2merge<-df2merge[complete.cases(df2merge$latest.anticoagulation.issue.start.date.before.af.diagnosis.date),]
 
 #create new columns to test if merged in duplicated columns from df11merge2_subset are identical to those
 #already in Subset_df2merge,true =identical , false = not identical
@@ -1061,60 +1039,34 @@ df12merge<-rename(df12merge,Patient.ID="M16...Number.of.patients.with.AF.Prescri
 #left join patient id and event date from df2merge into df12merge
 df12merge<-left_join(df12merge,select(.data=df2merge,Patient.ID,Event.date),by="Patient.ID",copy = FALSE)
 
-
-#create a new col to test whether M16a.Diagnosed.AF.Patients.Prescribed.with.Antiplatelet.Drug..Event.date col 
-#is identical to M16a.Diagnosed.AF.Patients.Prescribed.with.Antiplatelet.Drug..Issue.start.date col
-#true if identical and false if not identical
-#true in 24869  observations and false in  9482 observations
-df12merge$datecolsidentical<-df12merge$M16a.Diagnosed.AF.Patients.Prescribed.with.Antiplatelet.Drug..Event.date==df12merge$M16a.Diagnosed.AF.Patients.Prescribed.with.Antiplatelet.Drug..Issue.start.date
-
-#create a subset of df12merge where df12merge$datecolsidentical is false
-df12merge_subset<-subset(df12merge,df12merge$datecolsidentical==FALSE)
-
-#Create a new col in df12merge_subset to check whether for all the 9482 observations
-#whether the M16a.Diagnosed.AF.Patients.Prescribed.with.Antiplatelet.Drug..Event.date < M16a.Diagnosed.AF.Patients.Prescribed.with.Antiplatelet.Drug..Issue.start.date col
-#this is true in 9370 observations but false in 112 observations
-df12merge_subset$antiplatelet.drug.event.date.less.than.issue.start.date<-
-  df12merge_subset$M16a.Diagnosed.AF.Patients.Prescribed.with.Antiplatelet.Drug..Event.date<df12merge_subset$M16a.Diagnosed.AF.Patients.Prescribed.with.Antiplatelet.Drug..Issue.start.date
-
-
-#create a subset of df12merge_subset where df12merge_subset$antiplatelet.drug.event.date.less.than.issue.start.date is false
-#for the 112 observations the issue start date year is for the most part 1917 or 1918 but not in all cases
-df12merge_subset2<-subset(df12merge_subset,df12merge_subset$antiplatelet.drug.event.date.less.than.issue.start.date==FALSE)
-
-#create a new col in df12merge to see if antiplatelet.event.date.sameday.as.or.after.af.diagnosis.date, if so return the
-#antiplatelet event date
-df12merge$antiplatelet.event.date.sameday.as.or.after.af.diagnosis.date<-if_else(df12merge$M16a.Diagnosed.AF.Patients.Prescribed.with.Antiplatelet.Drug..Event.date>=df12merge$Event.date,df12merge$M16a.Diagnosed.AF.Patients.Prescribed.with.Antiplatelet.Drug..Event.date,as.Date(NA,"%Y-%m-%d"))
-
-
-#create a new col in df12merge to see if antiplatelet issue start.date is same day or after af diagnosis date, if so return the
-#antiplatelet issue start date
+#create a new col in df12merge to see if antiplatelet.issue.start.date.sameday.as.or.after.af.diagnosis.date, if so return the
+#antiplatelet issue.start. date
 df12merge$antiplatelet.issue.start.date.sameday.as.or.after.af.diagnosis.date<-if_else(df12merge$M16a.Diagnosed.AF.Patients.Prescribed.with.Antiplatelet.Drug..Issue.start.date>=df12merge$Event.date,df12merge$M16a.Diagnosed.AF.Patients.Prescribed.with.Antiplatelet.Drug..Issue.start.date,as.Date(NA,"%Y-%m-%d"))
 
-#show df12merge without NAs in the antiplatelet.event.date.sameday.as.or.after.af.diagnosis.date col
-df12merge_subset3<-df12merge[complete.cases(df12merge$antiplatelet.event.date.sameday.as.or.after.af.diagnosis.date),]
+#show df12merge without NAs in the antiplatelet.issue.start.date.sameday.as.or.after.af.diagnosis.date col
+df12merge_subset<-df12merge[complete.cases(df12merge$antiplatelet.issue.start.date.sameday.as.or.after.af.diagnosis.date),]
 
 #for a unique patient show
-#earliest antiplatelet event date, that is same day or after af event/diagnosis date
-df12merge_subset3<-df12merge_subset3 %>% group_by(Patient.ID) %>% 
-  slice(which.min(antiplatelet.event.date.sameday.as.or.after.af.diagnosis.date))
+#earliest antiplatelet issue start date, that is same day or after af event/diagnosis date
+df12merge_subset<-df12merge_subset %>% group_by(Patient.ID) %>% 
+  slice(which.min(antiplatelet.issue.start.date.sameday.as.or.after.af.diagnosis.date))
 
-#rename antiplatelet.event.date.sameday.as.or.after.af.diagnosis.date to earliest.antiplatelet.event.date.sameday.as.or.after.af.diagnosis.date
-df12merge_subset3<-rename(df12merge_subset3,earliest.antiplatelet.event.date.sameday.as.or.after.af.diagnosis.date="antiplatelet.event.date.sameday.as.or.after.af.diagnosis.date")
+#rename antiplatelet.issue.start.date.sameday.as.or.after.af.diagnosis.date to earliest.antiplatelet.issue.start.date.sameday.as.or.after.af.diagnosis.date
+df12merge_subset<-rename(df12merge_subset,earliest.antiplatelet.issue.start.date.sameday.as.or.after.af.diagnosis.date="antiplatelet.issue.start.date.sameday.as.or.after.af.diagnosis.date")
 
 
-#del cols in df12merge_subset3 i.e event.date, datecolsidentical, antiplatelet.issue.start.date.sameday.as.or.after.af.diagnosis.date"  
-df12merge_subset3<-df12merge_subset3[,-c(17:18,20)]
+#del cols in df12merge_subset i.e event.date,   
+df12merge_subset<-df12merge_subset[,-c(17)]
 
-#leftjoin df12merge_subset3 into df2merge by patient id
-df2merge<-left_join(x=df2merge,y=df12merge_subset3,by="Patient.ID",copy = FALSE)
+#leftjoin df12merge_subset into df2merge by patient id
+df2merge<-left_join(x=df2merge,y=df12merge_subset,by="Patient.ID",copy = FALSE)
 
 #create Subset_df2merge where there are no NAs in the earliest.antiplatelet.event.date.sameday.as.or.after.af.diagnosis.date column
-Subset_df2merge<-df2merge[complete.cases(df2merge$earliest.antiplatelet.event.date.sameday.as.or.after.af.diagnosis.date),]
+Subset_df2merge<-df2merge[complete.cases(df2merge$earliest.antiplatelet.issue.start.date.sameday.as.or.after.af.diagnosis.date),]
 
-#using Subset_df2merge , create new columns to test if merged in duplicated columns from df1merge_subset3 are identical to those
+#using Subset_df2merge , create new columns to test if merged in duplicated columns from df12merge_subset are identical to those
 #already in df2merge,true =identical , false = not identical
-#duplicated cols from df12merge_subset3 are:
+#duplicated cols from df12merge_subset are:
 #"Registered.CCG"                                          
 #"Registered.practice"                                     
 #"Registered.practice.ID"                                  
