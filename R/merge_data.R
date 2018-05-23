@@ -12,6 +12,22 @@ df2<-df2 %>% group_by(Patient.ID) %>%
 #[9] "Registered.practice.ID" "Registration.date"      "Registration.status"    "Patient.ID"            
 #[13] "Patient.Count"          "RecodedSex"     
 
+#data_frames[[2]] shows patients on practice list registered before date data was run
+#assign data_frames[[2]] to df2a 
+#df2a<-data_frames[[2]]
+
+#Remove duplicate patient ids in df2a to retain the latest deduction date
+#but retain NA if thats the latest???
+#Deduction.date.mergein <- df2a %>% group_by(Patient.ID) %>% summarise(max_ded = max(Deduction.date))
+
+#rename deduction.date col in df2a to Deduction.date.max
+#Deduction.date.mergein<-rename(Deduction.date.mergein,Deduction.date.max="Deduction.date")
+  
+#left join in only the deduction.date.max col from df2a note all the upcoming deduction.date.cols
+#have not been compared with deduction.date.max
+#df2merge<-df2 %>% left_join(select(.data=Deduction.date.mergein,Patient.ID, Deduction.date.max),by="Patient.ID",copy = FALSE)
+
+
 #ignore data_frames[[1]]
 
 #...

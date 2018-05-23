@@ -85,14 +85,14 @@ nadelete <- function(data, desiredCol) {
 }
 
 #hounslow is a vector of stings of 48 registered practices in hounslow
-#Question: do we include the IDs for the 3 practices which closed or merged during the project period i.e.
-#E85732, E85686 and E85044
+#i have included Hounslow practices which have closed or merged since the project period 
+#spring grove practice is not included as it uses emis
 #- this will be entered into clean_dataframes
 hounslow <- c("E85004","E85605","E85117","E85744","E85007","E85001","E85045","E85625","E85030","E85683","E85693",
               "E85746","E85658","E85113","E85692","E85040","E85600","E85024","E85071","E85708","E85697","E85727",
               "E85739","E85699","E85718","E85736","E85700","E85035","E85115","E85734","E85056","Y02672","E85696",
               "E85052","E85114","E85018","E85062","E85681","E85707","E85716","E85058","E85735","E85059","E85126",
-              "E85713","E85015","E85060","Y02671")
+              "E85713","E85015","E85060","Y02671","E85732", "E85686","E85044")
 
 #practices_only_in_houslow function remove practices not in hounslow vector
 #- this will be entered into clean_dataframes
