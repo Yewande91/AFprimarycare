@@ -9,3 +9,10 @@
 
 /data/*.xls*
 /data/*.csv
+/data/*.rda
+
+/documents/
+
+/R/*_mimic_*.R
+
+packrat/lib*/
