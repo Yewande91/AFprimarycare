@@ -39,7 +39,7 @@ correct_century_sl<-function(tib){
   date_cols_s<-date_cols_s[!grepl("Issue",date_cols_s)]
   date_cols_q<-lapply(date_cols_s,sym)
   for(dc in date_cols_q){
-    tib <- tib %>% mutate(UQE(dc) := if_else(
+    tib <- tib %>% mutate(!! get_expr(dc) := if_else(
       UQ(dc) > cutoff_date, 
       as.Date(format(UQ(dc), "19%y-%m-%d")), 
       as.Date(format(UQ(dc), "%Y-%m-%d"))
@@ -51,7 +51,7 @@ correct_century_sl<-function(tib){
   date_cols_s<-date_cols_s[grepl("Issue",date_cols_s)]
   date_cols_q<-lapply(date_cols_s,sym)
   for(dc in date_cols_q){
-    tib <- tib %>% mutate(UQE(dc) := if_else(
+    tib <- tib %>% mutate(!! get_expr(dc) := if_else(
       UQ(dc) > cutoff_date, 
       as.Date(format(UQ(dc), "19%y-%m-%d")), 
       as.Date(format(UQ(dc), "%Y-%m-%d"))
