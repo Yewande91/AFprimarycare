@@ -1,45 +1,246 @@
+#ignore data_frames[[1]]
+
 #data_frames[[2]] shows patients on practice list registered before date data was run
 #assign data_frames[[2]] to df2 
 df2<-data_frames[[2]]
 
-#Remove duplicate patient ids in df2 to retain the earliest registration date
-df2<-df2 %>% group_by(Patient.ID) %>% 
-  slice(which.min(Registration.date))
+#registration date
+#for vignette
+#how many registration dates in df2 are greater than 2017-11-16  i.e. date data was run or
+#with no registration date at all?
+#answer is 3311
+df2_reg_date_greater_than_date_data_was_run_or_no_reg_date<-subset(df2,df2$Registration.date>"2017-11-16"|is.na(df2$Registration.date))
 
-#column names of df2
+#na_rm_min function if only na for a specific patient it will return na, if a mix of a date 
+#and na it will return minimum date
+na_rm_min <- function(x) {
+  x_no_na <- x[!is.na(x)]
+  if(length(x_no_na)==0) {
+    return(NA)
+  } else {
+    min(x, na.rm = TRUE)
+  }
+}
+
+#for vignette
+#in df2_reg_date_greater_than_date_data_was_run_or_no_reg_date_or_no_reg_date remove duplicate ids
+#there are no duplicate ids
+df2_reg_date_greater_than_date_data_was_run_or_no_reg_date<-df2_reg_date_greater_than_date_data_was_run_or_no_reg_date %>% 
+  group_by(Patient.ID) %>% 
+  summarise(df2_reg_date_min=na_rm_min(Registration.date))%>%
+  ungroup()
+
+#for vignette
+#find out how many of the 3311 registered patients have an AF diagnosis using df6
+#data_frames[[6]] shows patients diagnosed with Atrial Fibrillation before date data was run
+#104 have an af diagnosis date
+df6<-data_frames[[6]]
+df6test<-df6 %>% 
+  group_by(Patient.ID) %>% 
+  summarise(af_diagnosis_date = na_rm_min(Event.date))%>%
+  ungroup()
+
+df2_reg_date_greater_than_date_data_was_run_or_no_reg_date<-left_join(x=df2_reg_date_greater_than_date_data_was_run_or_no_reg_date,
+                                                       y=df6test,by="Patient.ID",copy = FALSE)
+df2_reg_date_greater_than_date_data_was_run_or_no_reg_date_AF_only<-subset(df2_reg_date_greater_than_date_data_was_run_or_no_reg_date,
+                                                            (!is.na(df2_reg_date_greater_than_date_data_was_run_or_no_reg_date[,3])))
+#for the vignette
+#show distribution of the 104 af diagnosis dates to see if they are spread out in the entire study period 
+# 2011-01-01 to 2017-10-31
+#or all concentrated before of after the intervention period (October 2014) as that may cause bias
+library(lubridate)
+library(ggplot2)
+qplot(year(af_diagnosis_date), data=df2_reg_date_greater_than_date_data_was_run_or_no_reg_date_AF_only, geom = "bar")
+
+
+#filter first to remove reg dates greater than 2017-11-16 and  blank reg dtaes
+#group by patient id
+#Remove duplicate patient ids in df2 to retain the earliest registration date
+library(tidyverse)
+df2merge<-df2 %>%
+  filter(Registration.date<=as.Date("2017-11-16",format="%Y-%m-%d")) %>%
+           group_by(Patient.ID) %>% 
+  slice(which.min(Registration.date)) %>%
+  ungroup()
+
+#column names of df2merge
 #[1] "Age"                    "Ethnicity"              "Sex"                    "SOA..lower.layer."     
 #[5] "SOA..middle.layer."     "Deduction.date"         "Registered.CCG"         "Registered.practice"   
 #[9] "Registered.practice.ID" "Registration.date"      "Registration.status"    "Patient.ID"            
 #[13] "Patient.Count"          "RecodedSex"     
 
-#data_frames[[2]] shows patients on practice list registered before date data was run
-#assign data_frames[[2]] to df2a 
-#df2a<-data_frames[[2]]
+#for the vignette
+#how many of the 3311 patients still remain in the sliced df2merge, answer is 193 patients remain, of which
+# 18 have an AF diagnosis equating to loss of 86 patients diagnosed with AF due to regisration dates being NA
+# or registration dates being in the future
+sliced_df2merge<-df2merge
+df2_reg_date_greater_than_date_data_was_run_or_no_reg_date$reg_date_greater_than_date_data_was_run <-c(TRUE)
+sliced_df2merge<-left_join(x=sliced_df2merge,y=df2_reg_date_greater_than_date_data_was_run_or_no_reg_date,
+                           by="Patient.ID",copy = FALSE)
+sliced_df2merge2<-subset(sliced_df2merge,sliced_df2merge$reg_date_greater_than_date_data_was_run=="TRUE")
+sliced_df2merge3<-subset(sliced_df2merge2,(!is.na(sliced_df2merge2[,16])))
 
-#Remove duplicate patient ids in df2a to retain the latest deduction date
-#but retain NA if thats the latest???
-#Deduction.date.mergein <- df2a %>% group_by(Patient.ID) %>% summarise(max_ded = max(Deduction.date))
-
-#rename deduction.date col in df2a to Deduction.date.max
-#Deduction.date.mergein<-rename(Deduction.date.mergein,Deduction.date.max="Deduction.date")
-  
-#left join in only the deduction.date.max col from df2a note all the upcoming deduction.date.cols
-#have not been compared with deduction.date.max
-#df2merge<-df2 %>% left_join(select(.data=Deduction.date.mergein,Patient.ID, Deduction.date.max),by="Patient.ID",copy = FALSE)
+#delete all cols in df2merge except for col 10 i.e. minimum reg date and col 12 patient id 
+df2merge<-df2merge[,-c(1:9,11,13:14)]
 
 
-#ignore data_frames[[1]]
+
+#deduction date
+#for the vignette
+#how many deduction dates in df2 are greater than 2017-11-16. 
+#answer is 563
+df2_ded_date_greater_than_date_data_was_run<-subset(df2,df2$Deduction.date>"2017-11-16")
+
+#this function finds the max date and returns the row number
+
+na_which_max <- function(x) {
+  x_no_na <- x[!is.na(x)]
+  if(length(x_no_na)==0) {
+    return(1)
+  } else {
+    which.max(x)
+  }
+}
+
+#for the vignette
+#in df2_ded_date_greater_than_date_data_was_run remove duplicate ids
+#answer is 562, so there was only one duplicate
+df2_ded_date_greater_than_date_data_was_run<-df2_ded_date_greater_than_date_data_was_run %>% 
+  group_by(Patient.ID) %>% 
+  slice(na_which_max(Deduction.date)) %>%
+  ungroup()
+
+#delete all cols in df2_ded_date_greater_than_date_data_was_run except for col 12 patient id, 
+# col 15 af diagnosis date and col 16 ded_date_greater_than_date_data_was_run
+df2_ded_date_greater_than_date_data_was_run<-df2_ded_date_greater_than_date_data_was_run[,-c(1:5,7:11,13:14)]
+
+#for the vignette
+#find out how many of the 562  patients with a deduction date have an AF diagnosis using df6
+#answer is only 1 has an af diagnosis date 
+
+df2_ded_date_greater_than_date_data_was_run<-left_join(x=df2_ded_date_greater_than_date_data_was_run,y=df6test,by="Patient.ID",copy = FALSE)
+df2_ded_date_greater_than_date_data_was_run_AF_only<-subset(df2_ded_date_greater_than_date_data_was_run,(!is.na(df2_ded_date_greater_than_date_data_was_run[,3])))
+
+
+#filter first to remove deduction dates greater than 2017-11-16
+#group by patient id
+#Remove duplicate patient ids in df2 to retain the latest deduction date or NAs
+
+df2_ded_date<-df2 %>%
+  filter(Deduction.date<="2017-11-16"|is.na(Deduction.date)) %>%
+  group_by(Patient.ID) %>% 
+  slice(na_which_max(Deduction.date)) %>%
+  ungroup()
+
+
+#for the vignette
+#how many of the 562 patients still remain in the sliced df2_ded_date, answer is 218 patients remain, of which
+#  1 have an AF diagnosis equating to loss of 0 patients diagnosed with AF due to deduction dates being 
+#  being after date data was run
+sliced_df2_ded_date<-df2_ded_date
+df2_ded_date_greater_than_date_data_was_run$ded_date_greater_than_date_data_was_run <-c(TRUE)
+sliced_df2_ded_date<-left_join(x=sliced_df2_ded_date,y=df2_ded_date_greater_than_date_data_was_run,
+                           by="Patient.ID",copy = FALSE)
+sliced_df2_ded_date2<-subset(sliced_df2_ded_date,sliced_df2_ded_date$ded_date_greater_than_date_data_was_run=="TRUE")
+sliced_df2_ded_date3<-subset(sliced_df2_ded_date2,(!is.na(sliced_df2_ded_date2[,16])))
+
+#remove registration date col from df2_ded_date, so its not confused with the min reg date in df2 merge
+df2_ded_date<-df2_ded_date[,-c(10)]
+
+#left join df2_ded_date into df2merge
+df2merge<-left_join(x=df2merge,y=df2_ded_date,by="Patient.ID",copy = FALSE)
+
+
+
+#for vignette
+#are all the deduction dates in df2merge after the registration dates
+#answer is 391 where Deduction.date < Registration.date
+#of this 391 patients , 0 have an AF diagnosis so 0 AF diagnosed patients which will be lost
+df2merge_check1<-df2merge %>%
+  filter(Deduction.date < Registration.date)
+
+df2merge_check1<-left_join(x=df2merge_check1,y=df6test,by="Patient.ID",copy = FALSE)
+
+df2merge_check1_AF_only<-subset(df2merge_check1,(!is.na(df2merge_check1[,15])))
+
+#remove 391 patients in df2merge where deduction date < registration date
+df2merge<-df2merge %>%
+  filter(Deduction.date >= Registration.date | is.na(Deduction.date))
+
+
+
+#for vignette
+#how many cases are there where the registration and the deduction dates are the same date
+#981 patients 
+#of which 4 have an AF diagnosis
+#i have chosen to keep these patients in as it could still be plausible to have the same date, so the 
+#4 af diagnosed will not be lost
+df2merge_check2<-df2merge %>%
+  filter(Deduction.date == Registration.date)
+
+df2merge_check2<-left_join(x=df2merge_check2,y=df6test,by="Patient.ID",copy = FALSE)
+
+df2merge_check2_AF_only<-subset(df2merge_check2,(!is.na(df2merge_check2[,15])))
+
+
+
+#for vignette
+#check that if registration status is current , deduction date is NA 
+#there are 3 patients where it says current but the deduction date is not blank 
+#none of these 3 patients have an AF diagnosis
+df2merge_check3<-df2merge %>%
+  filter(Registration.status =="Current")
+
+df2merge_check3a<-df2merge_check3 %>%
+  filter(!is.na(Deduction.date))
+
+df2merge_check3a<-left_join(x=df2merge_check3a,y=df6test,by="Patient.ID",copy = FALSE)
+
+df2merge_check3a_AF_only<-subset(df2merge_check3a,(!is.na(df2merge_check3a[,15])))
+
+#check that if registration status  "Deducted", "Deceased, Deducted" or "Deceased" 
+#the deduction date is not NA
+#32 patients where registration status  "Deducted", "Deceased, Deducted" or "Deceased" but deduction date is NA
+# 1 of these 32 patients has an AF diagnosis 
+df2merge_check4<-df2merge %>%
+  filter(Registration.status =="Deducted" | Registration.status =="Deceased, Deducted" |
+           Registration.status == "Deceased" )
+
+df2merge_check4a<-df2merge_check4 %>%
+  filter(is.na(Deduction.date))
+
+df2merge_check4a<-left_join(x=df2merge_check4a,y=df6test,by="Patient.ID",copy = FALSE)
+
+df2merge_check4a_AF_only<-subset(df2merge_check4a,(!is.na(df2merge_check4a[,15])))
+
+#check how many patients where the registration status is NA
+#there are 7 patients where this happens , none of whom have an AF diagnosis
+#this is because these patients were not in the df2_ded_date merge in as there deduction dates 
+#were greater than the date data was run 
+df2merge_check5<-subset(df2merge,(is.na(df2merge[,12])))
+
+df2merge_check5a<-left_join(x=df2merge_check5,y=df6test,by="Patient.ID",copy = FALSE)
+
+df2merge_check5a_AF_only<-subset(df2merge_check5a,(!is.na(df2merge_check5a[,15])))
+
+# filter out from df2merge the 3 patients where it says current but the deduction date is not blank 
+#and the 32 patients where registration status  "Deducted", "Deceased, Deducted" or "Deceased" but deduction date is NA
+#and the 7 cases where registration ststus is na
+df2merge<-df2merge %>%
+  filter(Registration.status =="Current" & is.na(Deduction.date) |
+           Registration.status =="Deducted" & !is.na(Deduction.date)| 
+           Registration.status =="Deceased, Deducted" & !is.na(Deduction.date)|
+            Registration.status == "Deceased" & !is.na(Deduction.date))
+
+
+
 
 #...
 #data_frames[[3]] shows snapshot of patients on the AF at risk register
 #assign data_frames[[3]] to df3
 df3<-data_frames[[3]]
 
-#Remove duplicate patient ids in df3 to retain the earliest registration date
-df3<-df3 %>% group_by(M02a...Number.of.Patients.on.the.Atrial.Fibrillation..AF..At.Risk.Register..Patient.ID) %>% 
-  slice(which.min(Registration.date))
-
-#colnames which are present in both df3 and df2 (numbers correspond to colnames in df3)
+#colnames which are present in both df3 and df2merge (numbers correspond to colnames in df3)
 #[1] "Deduction.date"                                                                        
 #[2] "Registered.CCG"                                                                        
 #[3] "Registered.practice"                                                                   
@@ -48,84 +249,38 @@ df3<-df3 %>% group_by(M02a...Number.of.Patients.on.the.Atrial.Fibrillation..AF..
 #[6] "Registration.status"                                                                   
 #[14] "Patient.Count"
 
-#rename"M02a...Number.of.Patients.on.the.Atrial.Fibrillation..AF..At.Risk.Register..Patient.ID" col in df3 
-#to "Patient.ID", although colname different it refers to same thing
-df3<-rename(df3,Patient.ID ="M02a...Number.of.Patients.on.the.Atrial.Fibrillation..AF..At.Risk.Register..Patient.ID")
+#remove cols already present in df2merge
+df3merge<-df3[,-c(1:6,14)]
+
+#rename"M02a...Number.of.Patients.on.the.Atrial.Fibrillation..AF..At.Risk.Register..Patient.ID" col 
+#in df3merge to "Patient.ID", although colname different it refers to same thing
+df3merge<-rename(df3merge,Patient.ID ="M02a...Number.of.Patients.on.the.Atrial.Fibrillation..AF..At.Risk.Register..Patient.ID")
+
+#this function finds the min  date and returns the row number
+
+na_which_min <- function(x) {
+  x_no_na <- x[!is.na(x)]
+  if(length(x_no_na)==0) {
+    return(1)
+  } else {
+    which.min(x)
+  }
+}
 
 
-#leftjoin all cols in df3 to df2merge 
+#Remove duplicate patient ids in df3 merge
+df3merge<-df3merge[!duplicated(df3merge$Patient.ID), ]
+
+#leftjoin all cols in df3merge to df2merge 
 #note in df2merge some patients who were previously on the af at risk register may not be identified as df3 is only
 #a snapshot
-df2merge<-left_join(x=df2,y=df3,by="Patient.ID",copy = FALSE)
+df2merge<-left_join(x=df2merge,y=df3merge,by="Patient.ID",copy = FALSE)
 
-#create a Subset_df2merge which shows rows for only those on the at risk register
-#(AF0011.High.Risk.Atrial.Fibrillation.Patients.with.LTCs..Patient.ID is the column of interest)
-Subset_df2merge<-df2merge[complete.cases(df2merge$AF0011.High.Risk.Atrial.Fibrillation.Patients.with.LTCs..Patient.ID),]
-
-#create new columns to test if duplicated columns are identical , 1 = true , 0 =false
-Subset_df2merge$Deduction.date.test<-as.integer(ifelse(Subset_df2merge$Deduction.date.x
-                                            ==Subset_df2merge$Deduction.date.y,1,0))
-
-
-Subset_df2merge$Registered.CCG.test<-as.integer(ifelse(Subset_df2merge$Registered.CCG.x
-                                            ==Subset_df2merge$Registered.CCG.y,1,0))
-
-
-Subset_df2merge$Registered.practice.test<-as.integer(ifelse(Subset_df2merge$Registered.practice.x
-                                            ==Subset_df2merge$Registered.practice.y,1,0))
-
-
-Subset_df2merge$Registered.practice.ID.test<-as.integer(ifelse(Subset_df2merge$Registered.practice.ID.x
-                                            ==Subset_df2merge$Registered.practice.ID.y,1,0))
-
-
-Subset_df2merge$Registration.date.test<-as.integer(ifelse(Subset_df2merge$Registration.date.x
-                                            ==Subset_df2merge$Registration.date.y,1,0))
-
-
-Subset_df2merge$Registration.status.test<-as.integer(ifelse(Subset_df2merge$Registration.status.x
-                                            ==Subset_df2merge$Registration.status.y,1,0))
-
-
-Subset_df2merge$Patient.count.test<-as.integer(ifelse(Subset_df2merge$Patient.Count.x
-                                            ==Subset_df2merge$Patient.Count.y,1,0))
-
-
-#delete duplicated columns that are identical in df2merge and keep duplicate columns that are not identical
-#so information is not lost
-#remove Deduction.date.y column as it is all NAs [15]
-#remove Registered.CCG.y column [16]
-#remove Registered.practice.y column [17]
-#remove Registered.practice.ID.y column [18]
-#remove Registration.date.y column (df3) [19] as although not identical to Registration.date.x (df2) dates 
-#in df2 are all earlier than in df2 
-#remove Patient.count.y column [27]
-
-df2merge<-df2merge[,-c(15:19,27)]
-
-
-#registration.status
-#when i subset to find out all the instances where this duplicated column is not identical, it tends to because 
-#df2 has an earlier registration date than df3
-#and instances where df2 and df3 have the same registration date
-#i checked the excel files and it seems in df2,the person was duplicated and 
-#the row selectedjust happened not to be the one that matched to the df3 file
-#at first i thought i could create a new Registration status column which keeps registration status 
-#from df2 if not on the at risk registerand if on the register it pulls the registration status from df3
-#however still the df2 registrations if not on the risk register would still be incorrect if duplicated as 
-#our function pulls the earliest registration date
-
-#rename registration.status.y in df2merge to registration.status.df3
-df2merge<-rename(df2merge,Registration.status.df3 ="Registration.status.y")
 
 #...
 #data_frames[[6]] shows patients diagnosed with Atrial Fibrillation before date data was run
 #assign data_frames[[6]] to df6 
 df6<-data_frames[[6]]
-
-#Remove duplicate patient ids in df6 to retain the earliest registration date
-df6<-df6 %>% group_by(Patient.ID) %>% 
-  slice(which.min(Registration.date))
 
 #colnames which are present in both df6 and df2merge (colnames as ordered in df6), note patient ID does not 
 #count as this column was used for the leftjoin
@@ -143,118 +298,24 @@ df6<-df6 %>% group_by(Patient.ID) %>%
 #[17] "Patient.Count"          
 #[18]"RecodedSex"  
 
-#leftjoin all cols in df6 to df2merge 
+#remove cols already present in df2merge 
+df6merge<-df6[,-c(2:6,10:15,17:18)]
+
+#Remove duplicate patient ids in df6merge
+df6merge<-df6merge[!duplicated(df6merge$Patient.ID), ]
+
+#leftjoin all cols in df6merge to df2merge 
 #note in the merge there will be lots of NAs as not all patients have an AF diagnosis
-#also some of the duplicated colnames do not have a .y at the end of the names as in before this new merge 
-#the duplicated cols had .x beside their name
-df2merge<-left_join(x=df2merge,y=df6,by="Patient.ID",copy = FALSE)
-
-#create Subset_df2merge  which shows only rows 
-#where event.date is not equal to NA
-#this limits the data to only those diagnosed with AF
-Subset_df2merge<-df2merge[complete.cases(df2merge$Event.date),]
-
-#create new columns to test if duplicated columns are identical , 1 = true , 0 =false
-
-Subset_df2merge$Age.test<-as.integer(ifelse(Subset_df2merge$Age.x
-                                            ==Subset_df2merge$Age.y,1,0))
+df2merge<-left_join(x=df2merge,y=df6merge,by="Patient.ID",copy = FALSE)
 
 
-Subset_df2merge$Ethnicity.test<-as.integer(ifelse(Subset_df2merge$Ethnicity.x
-                                 ==Subset_df2merge$Ethnicity.y,1,0))
 
-
-Subset_df2merge$Sex.test<-as.integer(ifelse(Subset_df2merge$Sex.x
-                                 ==Subset_df2merge$Sex.y,1,0))
-
-
-Subset_df2merge$SOA..lower.layer..test<-as.integer(ifelse(Subset_df2merge$SOA..lower.layer..x
-                                 ==Subset_df2merge$SOA..lower.layer..y,1,0))
-
-
-Subset_df2merge$SOA..middle.layer..test<-as.integer(ifelse(Subset_df2merge$SOA..middle.layer..x
-                                 ==Subset_df2merge$SOA..middle.layer..y,1,0))
-
-
-Subset_df2merge$Deduction.date.test<-as.integer(ifelse(Subset_df2merge$Deduction.date.x
-                                            ==Subset_df2merge$Deduction.date,1,0))
-
-
-Subset_df2merge$Registered.CCG.test<-as.integer(ifelse(Subset_df2merge$Registered.CCG.x
-                                            ==Subset_df2merge$Registered.CCG,1,0))
-
-
-Subset_df2merge$Registered.practice.test<-as.integer(ifelse(Subset_df2merge$Registered.practice.x
-                                                 ==Subset_df2merge$Registered.practice,1,0))
-
-
-Subset_df2merge$Registered.practice.ID.test<-as.integer(ifelse(Subset_df2merge$Registered.practice.ID.x
-                                                    ==Subset_df2merge$Registered.practice.ID,1,0))
-
-
-Subset_df2merge$Registration.date.test<-as.integer(ifelse(Subset_df2merge$Registration.date.x
-                                               ==Subset_df2merge$Registration.date,1,0))
-
-
-Subset_df2merge$Registration.status.test<-as.integer(ifelse(Subset_df2merge$Registration.status.x
-                                                 ==Subset_df2merge$Registration.status,1,0))
-
-#this is to compare registration.status in that came from df3 with that that came from df6
-Subset_df2merge$Registration.status.test2<-as.integer(ifelse(Subset_df2merge$Registration.status.df3
-                                                 ==Subset_df2merge$Registration.status,1,0))
-
-
-Subset_df2merge$Patient.count.test<-as.integer(ifelse(Subset_df2merge$Patient.Count.x
-                                           ==Subset_df2merge$Patient.Count,1,0))
-
-
-Subset_df2merge$RecodedSex.test<-as.integer(ifelse(droplevels(Subset_df2merge$RecodedSex.x)
-                                                   ==Subset_df2merge$RecodedSex.y,1,0))
-
-
-#delete duplicated columns that are identical in df2merge and keep duplicate columns that are not identical
-#so information is not lost
-#remove Age.y [23]
-#remove Sex.y [25]
-#remove Registered.CCG column [32]
-#remove Registered.practice column [33]
-#remove Registered.practice.ID column [34]
-#remove Registration.date column [35] as although not identical to Registration.date.x, 
-#dates in df2 are all earlier than or equal to dates in df6
-#remove RecodedSex.y [38]
-#remove Patient.Count column [37]
-
-df2merge<-df2merge[,-c(23,25,32:35,37,38)]
-
-#in 67 rows Ethnicity.y is not identical to Ethnicity.x (note test were done by subsetting)
-#eg.test<-subset(Subset_df2merge,Subset_df2merge$Ethnicity.test==0)
-#looking at excel files discrepancy still exists, it seems new coding of ethnicity may be causing the issue
-#rename Ethnicity.y to Ethnicity.df6
-df2merge<-rename(df2merge,Ethnicity.df6="Ethnicity.y")
-
-#in 61 rows SOA..lower.layer..x is not identical to SOA..lower.layer..y
-#looking at excel files discrepancy still exists, maybe this is due to movement of patient to different address
-df2merge<-rename(df2merge,SOA..lower.layer..df6="SOA..lower.layer..y")
-
-#in 57 rows SOA..middle.layer..x is not identical to SOA..middle.layer..y
-#looking at excel files discrepancy still exists, maybe this is due to movement of patient to different address
-df2merge<-rename(df2merge,SOA..middle.layer..df6="SOA..middle.layer..y")
-
-#in 43 rows Deduction.date is not identical to Deduction.date.x
-#looking at excel files same discrepancy exists, i would like to delete Deduction.date as is all but one row
-#these the dates are after the Deduction.date.x
-df2merge<-rename(df2merge,Deduction.date.df6="Deduction.date")
-
-#in 111 rows Registration.status is not identical to Registration.status.x
-#discrepancy still occurs in excel files, same issue as above with df3 file merge
-df2merge<-rename(df2merge,Registration.status.df6="Registration.status")
-
-#...
+#ignore data_frames [[7]] as chadsvasc is already noted in data_frames[[8]]
 #data_frames[[8]] shows patients  with AF who have a either a CHAD2DS2-VAc or CHADS2 Assessment Documented
 #assign data_frames[[8]] to df8
 df8<-data_frames[[8]]
 
-#make a df8 duplicate called df8 duplicate
+#make a df8 duplicate called df8 duplicate to use for tests
 df8duplicate<-df8
 
 #check if the two CHADSVASC eventdate columns in df8duplicate are identical
@@ -268,7 +329,7 @@ test<-subset(df8duplicate,
              df8duplicate$M07a...Number.of.AF.Patients.with.CHAD2DS2.VAc.Assessment.Documented..Event.date!=
                df8duplicate$M07aa...Number.of.AF.Patients.with.Read.code.XaY6i..Event.date)
 
-#create test 2 to check how many unique 'event dates'M07a...Number.of.AF.Patients.with.CHAD2DS2.VAc.Assessment.Documented..Event.date'
+#create test2 to check how many unique event dates in 'M07a...Number.of.AF.Patients.with.CHAD2DS2.VAc.Assessment.Documented..Event.date'
 #for the same patient ID.'M08a...Number.of.Patients.with.AF.who.have.a.either.a.CHAD2DS2.VAc.or.CHADS2.Assessment.Documented.or.both..Patient.ID' 
 #column used for patient ID
 test2<-df8duplicate %>% group_by(M08a...Number.of.Patients.with.AF.who.have.a.either.a.CHAD2DS2.VAc.or.CHADS2.Assessment.Documented.or.both..Patient.ID) %>%
@@ -278,7 +339,8 @@ test2<-df8duplicate %>% group_by(M08a...Number.of.Patients.with.AF.who.have.a.ei
 df8merge<-df8
 
 #leftjoin patient ID column and AF diagnosis date column in df2merge to df8merge
-df8merge<- df8merge %>% rename(Patient.ID="M08a...Number.of.Patients.with.AF.who.have.a.either.a.CHAD2DS2.VAc.or.CHADS2.Assessment.Documented.or.both..Patient.ID")%>%
+df8merge<- df8merge %>% 
+  rename(Patient.ID="M08a...Number.of.Patients.with.AF.who.have.a.either.a.CHAD2DS2.VAc.or.CHADS2.Assessment.Documented.or.both..Patient.ID")%>%
   left_join(select(.data=df2merge,Patient.ID, Event.date),by="Patient.ID",copy = FALSE)
 
 #create new column in df8merge,if merged in AF event.date is before or same as M07a...Number.of.AF.Patients.with.CHAD2DS2.VAc.Assessment.Documented..Event.date
@@ -296,7 +358,8 @@ df8merge$afeventdatebeforeorsamedayaschadsvasc2<-if_else(df8merge$Event.date<=df
 
 #create a subset of df8merge where either df8merge$afeventdatebeforeorsamedayaschadsvasc  or df8merge$afeventdatebeforeorsamedayaschadsvasc2
 #columns have no NAs
-df8merge_subset<-subset(df8merge,(!is.na(df8merge[,23]))|(!is.na(df8merge[,24])))
+# note there are still be some NAs that appear in df8merge_subset$afeventdatebeforeorsamedayaschadsvasc 
+df8merge_subset<-subset(df8merge,(!is.na(df8merge[,23])) | (!is.na(df8merge[,24])))
 
 
 #create column in df8merge_subset containing the earliest CHADSVASC date that is on same day or comes after the AF event date
@@ -304,9 +367,11 @@ df8merge_subset<-subset(df8merge,(!is.na(df8merge[,23]))|(!is.na(df8merge[,24]))
 df8merge_subset<-df8merge_subset%>%
   mutate(earliest.chadsvasc.date = pmin(afeventdatebeforeorsamedayaschadsvasc,afeventdatebeforeorsamedayaschadsvasc2,na.rm = TRUE))
 
-#remove duplicates from df8merge_subset by selecting earliest chadsvasc  date for same patient id
+#remove duplicates from df8merge_subset 
 df8merge_subset<-df8merge_subset %>% group_by(Patient.ID) %>% 
   slice(which.min(earliest.chadsvasc.date))
+
+
 
 #remove event.date,  afeventdatebeforechadsvasc and afeventdatebeforechadsvasc2 columns in df8merge_subset
 df8merge_subset<-df8merge_subset[,-c(22:24)]

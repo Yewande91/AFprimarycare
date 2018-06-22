@@ -4,10 +4,11 @@ library(tidyverse)
 #load rlang
 library(rlang)
 
-#first thing clean_dataframes function (shown at end of script) does is to replace Unknown to NA and assign 
-#to the data frames. Note unknown in Sex column will not change as this column is a factor column type.
+#the first thing clean_dataframes function (shown at end of script) does is to replace Unknown to NA 
+#Note unknown in Sex column will not change as this column is a factor column type.
 
-#create fix_colnames function to make syntactically valid column names - this will be entered into clean_dataframes function
+#create fix_colnames function to make syntactically valid column names - this will be entered into
+#clean_dataframes function
 fix_colnames<-function(DF){
   v<-colnames(DF)
   v_fixed<- make.names(v, unique=TRUE)
@@ -15,9 +16,10 @@ fix_colnames<-function(DF){
   DF
 }
 
+#century correction on the dates has been noted out, as dates in the future are due to a migration error
 #cut off date is set at 2017-11-17, where dates after this point will be converted to 20th century year -
 #this will be entered into clean_dataframes
-cutoff_date <- as.Date("2017-11-17")
+#cutoff_date <- as.Date("2017-11-17")
 
 # correct_century_sl takes the following arguments:
 # tib: a tibble
@@ -33,32 +35,32 @@ cutoff_date <- as.Date("2017-11-17")
 #- this will be entered into clean_dataframes
 #second part of function works on col names with 'Issue' in them 
 
-correct_century_sl<-function(tib){
-  cutoff_date <- as.Date("2017-11-17")
-  date_cols_s<-colnames(tib)[grepl( "date" , names( tib) ) ]
-  date_cols_s<-date_cols_s[!grepl("Issue",date_cols_s)]
-  date_cols_q<-lapply(date_cols_s,sym)
-  for(dc in date_cols_q){
-    tib <- tib %>% mutate(!! get_expr(dc) := if_else(
-      UQ(dc) > cutoff_date, 
-      as.Date(format(UQ(dc), "19%y-%m-%d")), 
-      as.Date(format(UQ(dc), "%Y-%m-%d"))
-    ))
-  }
+#correct_century_sl<-function(tib){
+ # cutoff_date <- as.Date("2017-11-17")
+ # date_cols_s<-colnames(tib)[grepl( "date" , names( tib) ) ]
+ # date_cols_s<-date_cols_s[!grepl("Issue",date_cols_s)]
+ # date_cols_q<-lapply(date_cols_s,sym)
+  #for(dc in date_cols_q){
+   # tib <- tib %>% mutate(!! get_expr(dc) := if_else(
+    #  UQ(dc) > cutoff_date, 
+    #  as.Date(format(UQ(dc), "19%y-%m-%d")), 
+     # as.Date(format(UQ(dc), "%Y-%m-%d"))
+ #   ))
+ #}
   
-  cutoff_date <- as.Date("2020-01-01")
-  date_cols_s<-colnames(tib)[grepl( "date" , names( tib) ) ]
-  date_cols_s<-date_cols_s[grepl("Issue",date_cols_s)]
-  date_cols_q<-lapply(date_cols_s,sym)
-  for(dc in date_cols_q){
-    tib <- tib %>% mutate(!! get_expr(dc) := if_else(
-      UQ(dc) > cutoff_date, 
-      as.Date(format(UQ(dc), "19%y-%m-%d")), 
-      as.Date(format(UQ(dc), "%Y-%m-%d"))
-    ))
-  }
-  tib
-}
+ # cutoff_date <- as.Date("2020-01-01")
+ # date_cols_s<-colnames(tib)[grepl( "date" , names( tib) ) ]
+ # date_cols_s<-date_cols_s[grepl("Issue",date_cols_s)]
+ # date_cols_q<-lapply(date_cols_s,sym)
+ # for(dc in date_cols_q){
+  #  tib <- tib %>% mutate(!! get_expr(dc) := if_else(
+   #   UQ(dc) > cutoff_date, 
+   #   as.Date(format(UQ(dc), "19%y-%m-%d")), 
+    #  as.Date(format(UQ(dc), "%Y-%m-%d"))
+  #  ))
+ # }
+#  tib
+#}
 
 #grepl search for matches to argument pattern within each element of a character vector.
 #fix_agecol converts all ages in wks in age column to 0yrs
@@ -119,7 +121,7 @@ clean_dataframes <- function(list_DF, hounslow){
   cleaned_list <- lapply(list_DF, function(y)
   {y %>% mutate_if(is.character, funs(replace(., . == "Unknown", NA_character_))) %>%
       fix_colnames %>% 
-      correct_century_sl() %>% 
+    #  correct_century_sl() %>% 
       fix_agecol %>%
       nadelete(desiredCol="Registered.practice.ID") %>%
       practices_only_in_houslow(hounslow = hounslow) %>%
