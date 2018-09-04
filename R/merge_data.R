@@ -200,7 +200,8 @@ df2merge_check3a_AF_only<-subset(df2merge_check3a,(!is.na(df2merge_check3a[,15])
 
 #check that if registration status  "Deducted", "Deceased, Deducted" or "Deceased" 
 #the deduction date is not NA
-#32 patients where registration status  "Deducted", "Deceased, Deducted" or "Deceased" but deduction date is NA
+#32 patients where registration status  "Deducted", "Deceased, Deducted" or "Deceased" 
+#but deduction date is NA
 # 1 of these 32 patients has an AF diagnosis 
 df2merge_check4<-df2merge %>%
   filter(Registration.status =="Deducted" | Registration.status =="Deceased, Deducted" |
@@ -301,8 +302,11 @@ df6<-data_frames[[6]]
 #remove cols already present in df2merge 
 df6merge<-df6[,-c(2:6,10:15,17:18)]
 
-#Remove duplicate patient ids in df6merge
-df6merge<-df6merge[!duplicated(df6merge$Patient.ID), ]
+#group by patient id and slice to keep row with earliest event date
+df6merge<-df6merge %>%
+  group_by(Patient.ID)%>%
+  slice(na_which_min(Event.date))%>%
+  ungroup()
 
 #leftjoin all cols in df6merge to df2merge 
 #note in the merge there will be lots of NAs as not all patients have an AF diagnosis
@@ -319,21 +323,9 @@ df8<-data_frames[[8]]
 df8duplicate<-df8
 
 #check if the two CHADSVASC eventdate columns in df8duplicate are identical
+#these two columns are not identical
 df8duplicate$Event.date.test<-as.integer(ifelse(df8duplicate$M07a...Number.of.AF.Patients.with.CHAD2DS2.VAc.Assessment.Documented..Event.date
                                                 ==df8duplicate$M07aa...Number.of.AF.Patients.with.Read.code.XaY6i..Event.date,1,0))
-
-#create test to look at 3 instances where CHADSVASC eventdate columns not identical
-#in the 3 cases where not identical, M07a...Number.of.AF.Patients.with.CHAD2DS2.VAc.Assessment.Documented..Event.date
-#is earlier than M07aa...Number.of.AF.Patients.with.Read.code.XaY6i..Event.date
-test<-subset(df8duplicate,
-             df8duplicate$M07a...Number.of.AF.Patients.with.CHAD2DS2.VAc.Assessment.Documented..Event.date!=
-               df8duplicate$M07aa...Number.of.AF.Patients.with.Read.code.XaY6i..Event.date)
-
-#create test2 to check how many unique event dates in 'M07a...Number.of.AF.Patients.with.CHAD2DS2.VAc.Assessment.Documented..Event.date'
-#for the same patient ID.'M08a...Number.of.Patients.with.AF.who.have.a.either.a.CHAD2DS2.VAc.or.CHADS2.Assessment.Documented.or.both..Patient.ID' 
-#column used for patient ID
-test2<-df8duplicate %>% group_by(M08a...Number.of.Patients.with.AF.who.have.a.either.a.CHAD2DS2.VAc.or.CHADS2.Assessment.Documented.or.both..Patient.ID) %>%
-  summarise(length(unique(M07a...Number.of.AF.Patients.with.CHAD2DS2.VAc.Assessment.Documented..Event.date)))
 
 #assign df8 to df8merge
 df8merge<-df8
@@ -368,64 +360,21 @@ df8merge_subset<-df8merge_subset%>%
   mutate(earliest.chadsvasc.date = pmin(afeventdatebeforeorsamedayaschadsvasc,afeventdatebeforeorsamedayaschadsvasc2,na.rm = TRUE))
 
 #remove duplicates from df8merge_subset 
-df8merge_subset<-df8merge_subset %>% group_by(Patient.ID) %>% 
-  slice(which.min(earliest.chadsvasc.date))
+df8merge_subset<-df8merge_subset %>% 
+  group_by(Patient.ID) %>% 
+  slice(which.min(earliest.chadsvasc.date))%>%
+  ungroup()
 
 
 
 #remove event.date,  afeventdatebeforechadsvasc and afeventdatebeforechadsvasc2 columns in df8merge_subset
-df8merge_subset<-df8merge_subset[,-c(22:24)]
+df8merge_subset<-df8merge_subset[,-c(1:4,6:12,21:24)]
 
 #left_join df8merge_subset to df2merge
 df2merge<-left_join(x=df2merge,y=df8merge_subset,by="Patient.ID",copy = FALSE)
 
 
-#create a Subset_df2merge which shows only rows 
-#where earliest.chadsvasc.date is not equal to NA
-#this limits the data to only those who have had a chadsvasc done
-Subset_df2merge<-df2merge[complete.cases(df2merge$earliest.chadsvasc.date),]
 
-
-#create new columns to test if merged in duplicated columns from df8merge_subset are identical to those
-#already in Subset_df2merge,true =identical , false = not identical
-#duplicated cols from df8merge_subset are:
-#"Deduction.date"                                                                        
-#"Registered.CCG"                                                                        
-#"Registered.practice.ID"                                                                
-#"Registration.status"  
-#Patient.count
-
-#these columns are not identical
-Subset_df2merge$Deduction.date.test<-Subset_df2merge$Deduction.date.x==Subset_df2merge$Deduction.date
-
-#these columns are not identical
-Subset_df2merge$Deduction.date.test2<-Subset_df2merge$Deduction.date.df6==Subset_df2merge$Deduction.date
-
-#these columns are identical
-Subset_df2merge$Registered.CCG.test<-Subset_df2merge$Registered.CCG.x==Subset_df2merge$Registered.CCG
-
-#these columns are identical
-Subset_df2merge$Registered.practice.ID.test<-Subset_df2merge$Registered.practice.ID.x==Subset_df2merge$Registered.practice.ID
-
-#these columns are not identical
-Subset_df2merge$Registration.status.test<-Subset_df2merge$Registration.status.x==Subset_df2merge$Registration.status
-
-#these columns are not identical
-Subset_df2merge$Registration.status.test2<-Subset_df2merge$Registration.status.df3==Subset_df2merge$Registration.status
-
-#these columns are not identical
-Subset_df2merge$Registration.status.test3<-Subset_df2merge$Registration.status.df6==Subset_df2merge$Registration.status
-
-#these columns are identical
-Subset_df2merge$Patient.Count.test<-Subset_df2merge$Patient.Count.x==Subset_df2merge$Patient.Count
-
-#rename non-identical duplicated columns
-df2merge<-rename(df2merge,Deduction.date.df8="Deduction.date")
-
-df2merge<-rename(df2merge,Registration.status.df8="Registration.status")
-
-#delete identical duplicated columns 
-df2merge<-df2merge[,-c(32:33,50)]
 
 #...
 
@@ -433,27 +382,17 @@ df2merge<-df2merge[,-c(32:33,50)]
 df8duplicate2<-df8
 
 #check if the two CHADS2 eventdate columns in df8duplicate2 are identical
+#these two cols are not identical
 df8duplicate2$Event.date.test<-as.integer(ifelse(df8duplicate2$M08bb...Number.of.AF.Patients.with.Read.code.XaP9J..Event.date
                                                 ==df8duplicate2$M08ba...Number.of.AF.Patients.with.Cong.heart.fail.hypertens.age.diab.stoke.2.risk.score.Assessment.Documented..Event.date,1,0))
 
-#create test3 to check why the chads2 cols are not identical
-#in all 695 cases where the CHADS2 columns are not identical this is because 
-#M08ba...Number.of.AF.Patients.with.Cong.heart.fail.hypertens.age.diab.stoke.2.risk.score.Assessment.Documented..Event.date
-#has dates which are earlier than M08bb...Number.of.AF.Patients.with.Read.code.XaP9J..Event.date
-test3<-subset(df8duplicate2,df8duplicate2$M08bb...Number.of.AF.Patients.with.Read.code.XaP9J..Event.date!=
-                df8duplicate2$M08ba...Number.of.AF.Patients.with.Cong.heart.fail.hypertens.age.diab.stoke.2.risk.score.Assessment.Documented..Event.date)
-
-test3$m08balessthanm08bb<-test3$M08ba...Number.of.AF.Patients.with.Cong.heart.fail.hypertens.age.diab.stoke.2.risk.score.Assessment.Documented..Event.date<test3$M08bb...Number.of.AF.Patients.with.Read.code.XaP9J..Event.date
-
-table(test3$m08balessthanm08bb)
-
-#...
 
 #assign df8 to df8merge2
 df8merge2<-df8
 
 #leftjoin patient ID column and AF diagnosis date column in df2merge to df8merge2
-df8merge2<- df8merge2 %>% rename(Patient.ID="M08a...Number.of.Patients.with.AF.who.have.a.either.a.CHAD2DS2.VAc.or.CHADS2.Assessment.Documented.or.both..Patient.ID")%>%
+df8merge2<- df8merge2 %>% 
+  rename(Patient.ID="M08a...Number.of.Patients.with.AF.who.have.a.either.a.CHAD2DS2.VAc.or.CHADS2.Assessment.Documented.or.both..Patient.ID")%>%
   left_join(select(.data=df2merge,Patient.ID, Event.date),by="Patient.ID",copy = FALSE)
 
 #create new column in df8merge2,if merged in AF event.date is before or same as M08bb...Number.of.AF.Patients.with.Read.code.XaP9J..Event.date
@@ -479,133 +418,16 @@ df8merge2_subset<-df8merge2_subset%>%
   mutate(earliest.chads2.date = pmin(afeventdatebeforeorsamedayaschads2,afeventdatebeforeorsamedayaschads2col2,na.rm = TRUE))
 
 #remove duplicates from df8merge2_subset by selecting earliest.chads2.date for same patient id
-df8merge2_subset<-df8merge2_subset %>% group_by(Patient.ID) %>% 
+df8merge2_subset<-df8merge2_subset %>% 
+  group_by(Patient.ID) %>% 
   slice(which.min(earliest.chads2.date))
 
 #remove event.date,  afeventdatebeforechads2 and afeventdatebeforeorsamedayaschads2col2 columns in df8merge2_subset
-df8merge2_subset<-df8merge2_subset[,-c(22:24)]
+df8merge2_subset<-df8merge2_subset[,-c(1:4,13:24)]
 
 #left_join df8merge2_subset to df2merge
 df2merge<-left_join(x=df2merge,y=df8merge2_subset,by="Patient.ID",copy = FALSE)
 
-#create Subset_df2merge which shows only rows 
-#where earliest.chads2.date is not equal to NA
-#this limits the data to only those who have had a chads2 done
-Subset_df2merge<-df2merge[complete.cases(df2merge$earliest.chads2.date),]
-
-#create new columns to test if merged in duplicated columns from df8merge_subset are identical to those
-#already in Subset_df2merge,true =identical , false = not identical
-#duplicated cols from df8merge2_subset are:
-#Registered CCG
-#Registered practice ID
-#Patient Count
-#columns starting M08bb/M08ba/m07a/M07aa are also duplicated
-
-#these columns are identical
-Subset_df2merge$Registered.CCG.test<-Subset_df2merge$Registered.CCG.x==Subset_df2merge$Registered.CCG
-
-#these columns are identical
-Subset_df2merge$Registered.practice.ID.test<-Subset_df2merge$Registered.practice.ID.x==Subset_df2merge$Registered.practice.ID
-
-#these columns are identical
-Subset_df2merge$Patient.Count.test<-Subset_df2merge$Patient.Count.x==Subset_df2merge$Patient.Count
-
-#rename columns to know whether they came from the df8merge_subset (chadsvasc) merge in or 
-#df8merge_subset (chads2) merge into df2merge
-df2merge<-rename(df2merge,M08bb...Number.of.AF.Patients.with.Read.code.XaP9J..Read.code.earliest.chadsvasc.date=
-"M08bb...Number.of.AF.Patients.with.Read.code.XaP9J..Read.code.x")                                                                   
-df2merge<-rename(df2merge,M08bb...Number.of.AF.Patients.with.Read.code.XaP9J..Read.code.description.earliest.chadsvasc.date=
-                 "M08bb...Number.of.AF.Patients.with.Read.code.XaP9J..Read.code.description.x")                                                       
-df2merge<-rename(df2merge,M08bb...Number.of.AF.Patients.with.Read.code.XaP9J..Event.date.earliest.chadsvasc.date=
-                   "M08bb...Number.of.AF.Patients.with.Read.code.XaP9J..Event.date.x")                                                                  
-df2merge<-rename(df2merge,M08ba...Number.of.AF.Patients.with.Cong.heart.fail.hypertens.age.diab.stoke.2.risk.score.Assessment.Documented..Numeric.value.earliest.chadsvasc.date=
-                   "M08ba...Number.of.AF.Patients.with.Cong.heart.fail.hypertens.age.diab.stoke.2.risk.score.Assessment.Documented..Numeric.value.x")   
-df2merge<-rename(df2merge,M08ba...Number.of.AF.Patients.with.Cong.heart.fail.hypertens.age.diab.stoke.2.risk.score.Assessment.Documented..Read.code.earliest.chadsvasc.date=
-                   "M08ba...Number.of.AF.Patients.with.Cong.heart.fail.hypertens.age.diab.stoke.2.risk.score.Assessment.Documented..Read.code.x")       
-df2merge<-rename(df2merge,M08ba...Number.of.AF.Patients.with.Cong.heart.fail.hypertens.age.diab.stoke.2.risk.score.Assessment.Documented..Event.date.earliest.chadsvasc.date=
-                   "M08ba...Number.of.AF.Patients.with.Cong.heart.fail.hypertens.age.diab.stoke.2.risk.score.Assessment.Documented..Event.date.x")      
-df2merge<-rename(df2merge,M08ba...Number.of.AF.Patients.with.Cong.heart.fail.hypertens.age.diab.stoke.2.risk.score.Assessment.Documented..Event.done.at.ID.earliest.chadsvasc.date=
-                   "M08ba...Number.of.AF.Patients.with.Cong.heart.fail.hypertens.age.diab.stoke.2.risk.score.Assessment.Documented..Event.done.at.ID.x")
-df2merge<-rename(df2merge,M07a...Number.of.AF.Patients.with.CHAD2DS2.VAc.Assessment.Documented..Numeric.value.earliest.chadsvasc.date=
-                   "M07a...Number.of.AF.Patients.with.CHAD2DS2.VAc.Assessment.Documented..Numeric.value.x")                                             
-df2merge<-rename(df2merge,M07a...Number.of.AF.Patients.with.CHAD2DS2.VAc.Assessment.Documented..Read.code.earliest.chadsvasc.date=
-                   "M07a...Number.of.AF.Patients.with.CHAD2DS2.VAc.Assessment.Documented..Read.code.x")                                                 
-df2merge<-rename(df2merge, M07a...Number.of.AF.Patients.with.CHAD2DS2.VAc.Assessment.Documented..Event.date.earliest.chadsvasc.date=
-                 "M07a...Number.of.AF.Patients.with.CHAD2DS2.VAc.Assessment.Documented..Event.date.x")                                                
- df2merge<-rename(df2merge,M07a...Number.of.AF.Patients.with.CHAD2DS2.VAc.Assessment.Documented..Event.done.at.ID.earliest.chadsvasc.date=
-                    "M07a...Number.of.AF.Patients.with.CHAD2DS2.VAc.Assessment.Documented..Event.done.at.ID.x")                                          
-df2merge<-rename(df2merge,M07aa...Number.of.AF.Patients.with.Read.code.XaY6i..Read.code.earliest.chadsvasc.date=
-                 "M07aa...Number.of.AF.Patients.with.Read.code.XaY6i..Read.code.x")                                                                   
-df2merge<-rename(df2merge,M07aa...Number.of.AF.Patients.with.Read.code.XaY6i..Read.code.description.earliest.chadsvasc.date=
-                 "M07aa...Number.of.AF.Patients.with.Read.code.XaY6i..Read.code.description.x")                                                       
-df2merge<-rename(df2merge,M07aa...Number.of.AF.Patients.with.Read.code.XaY6i..Event.date.earliest.chadsvasc.date=
-                 "M07aa...Number.of.AF.Patients.with.Read.code.XaY6i..Event.date.x")                                                                  
- df2merge<-rename(df2merge, M07aa...Number.of.AF.Patients.with.Read.code.XaY6i..Event.done.at.ID.earliest.chadsvasc.date=
-                  "M07aa...Number.of.AF.Patients.with.Read.code.XaY6i..Event.done.at.ID.x")                                                          
-
- 
- df2merge<-rename(df2merge,M08bb...Number.of.AF.Patients.with.Read.code.XaP9J..Read.code.earliest.chads2.date=
-                    "M08bb...Number.of.AF.Patients.with.Read.code.XaP9J..Read.code.y")                                                                   
- df2merge<-rename(df2merge,M08bb...Number.of.AF.Patients.with.Read.code.XaP9J..Read.code.description.earliest.chads2.date=
-                    "M08bb...Number.of.AF.Patients.with.Read.code.XaP9J..Read.code.description.y")                                                       
- df2merge<-rename(df2merge,M08bb...Number.of.AF.Patients.with.Read.code.XaP9J..Event.date.earliest.chads2.date=
-                    "M08bb...Number.of.AF.Patients.with.Read.code.XaP9J..Event.date.y")                                                                  
- df2merge<-rename(df2merge,M08ba...Number.of.AF.Patients.with.Cong.heart.fail.hypertens.age.diab.stoke.2.risk.score.Assessment.Documented..Numeric.value.earliest.chads2.date=
-                    "M08ba...Number.of.AF.Patients.with.Cong.heart.fail.hypertens.age.diab.stoke.2.risk.score.Assessment.Documented..Numeric.value.y")   
- df2merge<-rename(df2merge,M08ba...Number.of.AF.Patients.with.Cong.heart.fail.hypertens.age.diab.stoke.2.risk.score.Assessment.Documented..Read.code.earliest.chads2.date=
-                    "M08ba...Number.of.AF.Patients.with.Cong.heart.fail.hypertens.age.diab.stoke.2.risk.score.Assessment.Documented..Read.code.y")       
- df2merge<-rename(df2merge,M08ba...Number.of.AF.Patients.with.Cong.heart.fail.hypertens.age.diab.stoke.2.risk.score.Assessment.Documented..Event.date.earliest.chads2.date=
-                    "M08ba...Number.of.AF.Patients.with.Cong.heart.fail.hypertens.age.diab.stoke.2.risk.score.Assessment.Documented..Event.date.y")      
- df2merge<-rename(df2merge,M08ba...Number.of.AF.Patients.with.Cong.heart.fail.hypertens.age.diab.stoke.2.risk.score.Assessment.Documented..Event.done.at.ID.earliest.chads2.date=
-                    "M08ba...Number.of.AF.Patients.with.Cong.heart.fail.hypertens.age.diab.stoke.2.risk.score.Assessment.Documented..Event.done.at.ID.y")
- df2merge<-rename(df2merge,M07a...Number.of.AF.Patients.with.CHAD2DS2.VAc.Assessment.Documented..Numeric.value.earliest.chads2.date=
-                    "M07a...Number.of.AF.Patients.with.CHAD2DS2.VAc.Assessment.Documented..Numeric.value.y")                                             
- df2merge<-rename(df2merge,M07a...Number.of.AF.Patients.with.CHAD2DS2.VAc.Assessment.Documented..Read.code.earliest.chads2.date=
-                    "M07a...Number.of.AF.Patients.with.CHAD2DS2.VAc.Assessment.Documented..Read.code.y")                                                 
- df2merge<-rename(df2merge, M07a...Number.of.AF.Patients.with.CHAD2DS2.VAc.Assessment.Documented..Event.date.earliest.chads2.date=
-                    "M07a...Number.of.AF.Patients.with.CHAD2DS2.VAc.Assessment.Documented..Event.date.y")                                                
- df2merge<-rename(df2merge,M07a...Number.of.AF.Patients.with.CHAD2DS2.VAc.Assessment.Documented..Event.done.at.ID.earliest.chads2.date=
-                    "M07a...Number.of.AF.Patients.with.CHAD2DS2.VAc.Assessment.Documented..Event.done.at.ID.y")                                          
- df2merge<-rename(df2merge,M07aa...Number.of.AF.Patients.with.Read.code.XaY6i..Read.code.earliest.chads2.date=
-                    "M07aa...Number.of.AF.Patients.with.Read.code.XaY6i..Read.code.y")                                                                   
- df2merge<-rename(df2merge,M07aa...Number.of.AF.Patients.with.Read.code.XaY6i..Read.code.description.earliest.chads2.date=
-                    "M07aa...Number.of.AF.Patients.with.Read.code.XaY6i..Read.code.description.y")                                                       
- df2merge<-rename(df2merge,M07aa...Number.of.AF.Patients.with.Read.code.XaY6i..Event.date.earliest.chads2.date=
-                    "M07aa...Number.of.AF.Patients.with.Read.code.XaY6i..Event.date.y")                                                                  
- df2merge<-rename(df2merge, M07aa...Number.of.AF.Patients.with.Read.code.XaY6i..Event.done.at.ID.earliest.chads2.date=
-                    "M07aa...Number.of.AF.Patients.with.Read.code.XaY6i..Event.done.at.ID.y")  
- 
-
- #these columns are not identical
- Subset_df2merge$Deduction.date.test<-Subset_df2merge$Deduction.date.x==Subset_df2merge$Deduction.date
- 
- #these columns are not identical
- Subset_df2merge$Deduction.date.test2<-Subset_df2merge$Deduction.date.df6==Subset_df2merge$Deduction.date
- 
- #these columns are not identical
- Subset_df2merge$Deduction.date.test3<-Subset_df2merge$Deduction.date.df8==Subset_df2merge$Deduction.date
- 
- #these columns are not identical
- Subset_df2merge$Registration.status.test<-Subset_df2merge$Registration.status.x==Subset_df2merge$Registration.status
- 
- #these columns are not identical
- Subset_df2merge$Registration.status.test2<-Subset_df2merge$Registration.status.df3==Subset_df2merge$Registration.status
- 
- #these columns are not identical
- Subset_df2merge$Registration.status.test3<-Subset_df2merge$Registration.status.df6==Subset_df2merge$Registration.status
- 
- #these columns are not identical
- Subset_df2merge$Registration.status.test4<-Subset_df2merge$Registration.status.df8==Subset_df2merge$Registration.status
- 
- 
- #rename non-identical duplicated columns
- df2merge<-rename(df2merge,Deduction.date.df8.earliest.chads2.date="Deduction.date")
- 
- df2merge<-rename(df2merge,Registration.status.df8.earliest.chads2.date="Registration.status")
- 
- 
-#delete identical duplicated columns 
-df2merge<-df2merge[,-c(50,51,68)]
 
 #...
 #assign data_frames[[9]] to df9
@@ -636,73 +458,17 @@ df9merge$afeventdatebeforehasbled<-if_else(df9merge$Event.date<=
 df9merge_subset<-df9merge[complete.cases(df9merge$afeventdatebeforehasbled),]
 
 #group by patient id and retain earliest hasbled date
-df9merge_subset<-df9merge_subset %>% group_by(Patient.ID) %>% 
+df9merge_subset<-df9merge_subset %>% 
+  group_by(Patient.ID) %>% 
   slice(which.min(afeventdatebeforehasbled))
 
 #remove event.date col, "HASBLED.eventdate.test" col and  "afeventdatebeforehasbled" col   
-df9merge_subset<-df9merge_subset[,-c(18:19)]
+df9merge_subset<-df9merge_subset[,-c(1:6,17:19)]
 
 #left_join df9merge_subset to df2merge
 df2merge<-left_join(x=df2merge,y=df9merge_subset,by="Patient.ID",copy = FALSE)
 
-#create Subset_df2merge where there are no NAs in the afeventdatebeforehasbled column
-Subset_df2merge<-df2merge[complete.cases(df2merge$afeventdatebeforehasbled),]
 
-#create new columns to test if merged in duplicated columns from df9merge_subset are identical to those
-#already in Subset_df2merge,true =identical , false = not identical
-#duplicated cols from df9merge2_subset are:
-
-#these columns are identical
-Subset_df2merge$Registered.CCG.test<-Subset_df2merge$Registered.CCG.x==Subset_df2merge$Registered.CCG
-
-#these columns are identical
-Subset_df2merge$Registered.practice.test<-Subset_df2merge$Registered.practice.x==Subset_df2merge$Registered.practice
-
-#these columns are identical
-Subset_df2merge$Registered.practice.ID.test<-Subset_df2merge$Registered.practice.ID.x==Subset_df2merge$Registered.practice.ID
-
-#these columns are identical
-Subset_df2merge$Patient.Count.test<-Subset_df2merge$Patient.Count.x==Subset_df2merge$Patient.Count
-
-#these columns are not identical
-Subset_df2merge$Deduction.date.test<-Subset_df2merge$Deduction.date.x==Subset_df2merge$Deduction.date
-
-#these columns are not identical
-Subset_df2merge$Deduction.date.test2<-Subset_df2merge$Deduction.date.df6==Subset_df2merge$Deduction.date
-
-#these columns are not identical
-Subset_df2merge$Deduction.date.test3<-Subset_df2merge$Deduction.date.df8==Subset_df2merge$Deduction.date
-
-#these columns are not identical
-Subset_df2merge$Deduction.date.test4<-Subset_df2merge$Deduction.date.df8.earliest.chads2.date==Subset_df2merge$Deduction.date
-
-#these columns are not identical
-Subset_df2merge$Registration.status.test<-Subset_df2merge$Registration.status.x==Subset_df2merge$Registration.status
-
-#these columns are not identical
-Subset_df2merge$Registration.status.test2<-Subset_df2merge$Registration.status.df3==Subset_df2merge$Registration.status
-
-#these columns are not identical
-Subset_df2merge$Registration.status.test3<-Subset_df2merge$Registration.status.df6==Subset_df2merge$Registration.status
-
-#these columns are not identical
-Subset_df2merge$Registration.status.test4<-Subset_df2merge$Registration.status.df8==Subset_df2merge$Registration.status
-
-#these columns are not identical
-Subset_df2merge$Registration.status.test5<-Subset_df2merge$Registration.status.df8.earliest.chads2.date==Subset_df2merge$Registration.status
-
-#these columns are not identical
-Subset_df2merge$Registration.date.test<-Subset_df2merge$Registration.date.x==Subset_df2merge$Registration.date
-
-#rename non-identical duplicated columns
-df2merge<-rename(df2merge,Deduction.date.hasbled="Deduction.date")
-
-df2merge<-rename(df2merge,Registration.status.hasbled="Registration.status")
-
-df2merge<-rename(df2merge,Registration.date.hasbled="Registration.date")
-
-#delete identical duplicated columns 
-df2merge<-df2merge[,-c(68:70,82)]
 
 #assign data_frames[[10]] to df10
 df10<-data_frames[[10]]
@@ -737,92 +503,19 @@ df10merge<-df10merge%>%
 df10merge_subset<-df10merge[complete.cases(df10merge$earliest.chadsvasc.eligible.pop),]
 
 #group by patient id and retain earliest chadsvasc event date in the eligible population 
-df10merge_subset<-df10merge_subset %>% group_by(Patient.ID) %>% 
-  slice(which.min(earliest.chadsvasc.eligible.pop))
+df10merge_subset<-df10merge_subset %>% 
+  group_by(Patient.ID) %>% 
+  slice(which.min(earliest.chadsvasc.eligible.pop))%>%
+  ungroup()
 
 #remove earliest.chadsvasc.date, female.chadsvasc.event.date.same.as.earliest.chadsvasc.date, 
 #male.chadsvasc.event.date.same.as.earliest.chadsvasc.date from df10merge-subset
-df10merge_subset<-df10merge_subset[,-c(22:24)]
+df10merge_subset<-df10merge_subset[,-c(1:4,21:24)]
 
 
 #left_join df10merge_subset to df2merge
 df2merge<-left_join(x=df2merge,y=df10merge_subset,by="Patient.ID",copy = FALSE)
 
-
-#create Subset_df2merge where there are no NAs in the earliest.chadsvasc.eligible.pop column
-Subset_df2merge<-df2merge[complete.cases(df2merge$earliest.chadsvasc.eligible.pop),]
-
-#create new columns to test if merged in duplicated columns from df10merge_subset are identical to those
-#already in Subset_df2merge,true =identical , false = not identical
-#duplicated cols from df10merge2_subset are:
-#"Deduction.date"                                                                                                                                             
-#"Registered.practice.ID"                                                                                                                                     
-#"Registration.date"                                                                                                                                          
-#"Registration.status"
-#Patient count
-
-#these columns are identical
-Subset_df2merge$Registered.practice.ID.test<-Subset_df2merge$Registered.practice.ID.x==Subset_df2merge$Registered.practice.ID
-
-#these columns are identical
-Subset_df2merge$Patient.Count.test<-Subset_df2merge$Patient.Count.x==Subset_df2merge$Patient.Count
-
-#these columns are not identical
-Subset_df2merge$Deduction.date.test<-Subset_df2merge$Deduction.date.x==Subset_df2merge$Deduction.date
-
-#these columns are not identical
-Subset_df2merge$Deduction.date.test2<-Subset_df2merge$Deduction.date.df6==Subset_df2merge$Deduction.date
-
-#these columns are not identical
-Subset_df2merge$Deduction.date.test3<-Subset_df2merge$Deduction.date.df8==Subset_df2merge$Deduction.date
-
-#these columns are not identical
-Subset_df2merge$Deduction.date.test4<-Subset_df2merge$Deduction.date.df8.earliest.chads2.date==Subset_df2merge$Deduction.date
-
-#these columns are not identical
-Subset_df2merge$Deduction.date.test5<-Subset_df2merge$Deduction.date.hasbled==Subset_df2merge$Deduction.date
-
-#these columns are not identical
-Subset_df2merge$Registration.status.test<-Subset_df2merge$Registration.status.x==Subset_df2merge$Registration.status
-
-#these columns are not identical
-Subset_df2merge$Registration.status.test2<-Subset_df2merge$Registration.status.df3==Subset_df2merge$Registration.status
-
-#these columns are not identical
-Subset_df2merge$Registration.status.test3<-Subset_df2merge$Registration.status.df6==Subset_df2merge$Registration.status
-
-#these columns are not identical
-Subset_df2merge$Registration.status.test4<-Subset_df2merge$Registration.status.df8==Subset_df2merge$Registration.status
-
-#these columns are not identical
-Subset_df2merge$Registration.status.test5<-Subset_df2merge$Registration.status.df8.earliest.chads2.date==Subset_df2merge$Registration.status
-
-#these columns are not identical
-Subset_df2merge$Registration.status.test6<-Subset_df2merge$Registration.status.hasbled==Subset_df2merge$Registration.status
-
-#these columns are not identical
-Subset_df2merge$Registration.date.test<-Subset_df2merge$Registration.date.x==Subset_df2merge$Registration.date
-
-#these columns are not identical
-Subset_df2merge$Registration.date.test2<-Subset_df2merge$Registration.date.hasbled==Subset_df2merge$Registration.date
-
-#rename non-identical duplicated columns
-df2merge<-rename(df2merge,Deduction.date.eligiblepop="Deduction.date")
-
-df2merge<-rename(df2merge,Registration.status.eligiblepop="Registration.status")
-
-df2merge<-rename(df2merge,Registration.date.eligiblepop="Registration.date")
-
-#delete identical duplicated columns 
-df2merge<-df2merge[,-c(81,99)]
-
-# test to check that earliest hasbled date is same as that merged in from df10
-#the merged in hasbled col is identical to the earliest hasbled date
-Subset_df2merge$hasbledcolareidentical<-Subset_df2merge$afeventdatebeforehasbled==Subset_df2merge$M12c...Patients.with.HAS.BLED.Score.under.3.recorded..Event.date
-
-# test to check that earliest chasvasc date is same as that merged in from df10
-#the merged in chadsvasc col is identical to the earliest chadsvasc date
-Subset_df2merge$chadsvasccolareidentical<-Subset_df2merge$earliest.chadsvasc.date==Subset_df2merge$earliest.chadsvasc.eligible.pop
 
 #assign data_frames[[11]] to df11
 df11<-data_frames[[11]]
@@ -845,14 +538,16 @@ df11merge_subset<-df11merge[complete.cases(df11merge$anticoagulation.issue.start
 
 #show for a unique patient 
 #earliest issue start date, that is same day or after af event/diagnosis date
-df11merge_subset<-df11merge_subset %>% group_by(Patient.ID) %>% 
-  slice(which.min(anticoagulation.issue.start.date.sameday.or.after.af.diagnosis.date))
+df11merge_subset<-df11merge_subset %>% 
+  group_by(Patient.ID) %>% 
+  slice(which.min(anticoagulation.issue.start.date.sameday.or.after.af.diagnosis.date))%>%
+  ungroup()
 
 #rename anticoagulation.issue.start.date.sameday.or.after.af.diagnosis.date to earliest.anticoagulation.issue.start.date.sameday.or.after.af.diagnosis.date
 df11merge_subset<-rename(df11merge_subset,earliest.anticoagulation.issue.start.date.sameday.or.after.af.diagnosis.date="anticoagulation.issue.start.date.sameday.or.after.af.diagnosis.date")
 
 #del cols in df11merge_subset i.e event.date
-df11merge_subset<-df11merge_subset[,-c(20)]
+df11merge_subset<-df11merge_subset[,-c(12:17,19:20)]
 
 #rename Event.done.at col in df11merge_subset
 df11merge_subset<-rename(df11merge_subset,Anticoagulation.Event.done.at="Event.done.at")
@@ -862,95 +557,6 @@ df11merge_subset<-rename(df11merge_subset,Anticoagulation.Event.done.at.ID="Even
 
 #leftjoin df11merge_subset into df2merge by patient id
 df2merge<-left_join(x=df2merge,y=df11merge_subset,by="Patient.ID",copy = FALSE)
-
-#create Subset_df2merge where there are no NAs in the earliest.anticoagulation.event.date.after.af.diagnosis.date column
-Subset_df2merge<-df2merge[complete.cases(df2merge$earliest.anticoagulation.issue.start.date.sameday.or.after.af.diagnosis.date),]
-
-#using Subset_df2merge , create new columns to test if merged in duplicated columns from df11merge_subset are identical to those
-#already in df2merge,true =identical , false = not identical
-#duplicated cols from df11merge_subset are:
-#"Deduction.date"                                          
-#"Registered.CCG"                                          
-#"Registered.practice"                                     
-#"Registered.practice.ID"                                  
-#"Registration.date"                                       
-#"Registration.status"                                     
-#"Patient.Count"       
-
-#these columns are identical
-Subset_df2merge$Registered.practice.ID.test<-Subset_df2merge$Registered.practice.ID.x==Subset_df2merge$Registered.practice.ID
-
-#these columns are identical
-Subset_df2merge$Patient.Count.test<-Subset_df2merge$Patient.Count.x==Subset_df2merge$Patient.Count
-
-#these columns are identical
-Subset_df2merge$Registered.CCG.test<-Subset_df2merge$Registered.CCG.x==Subset_df2merge$Registered.CCG
-
-#these columns are identical
-Subset_df2merge$Registered.practice.test<-Subset_df2merge$Registered.practice.x==Subset_df2merge$Registered.practice
-
-
-
-#these columns are not identical
-Subset_df2merge$Deduction.date.test<-Subset_df2merge$Deduction.date.x==Subset_df2merge$Deduction.date
-
-#these columns are not identical
-Subset_df2merge$Deduction.date.test2<-Subset_df2merge$Deduction.date.df6==Subset_df2merge$Deduction.date
-
-#these columns are not identical
-Subset_df2merge$Deduction.date.test3<-Subset_df2merge$Deduction.date.df8==Subset_df2merge$Deduction.date
-
-#these columns are not identical
-Subset_df2merge$Deduction.date.test4<-Subset_df2merge$Deduction.date.df8.earliest.chads2.date==Subset_df2merge$Deduction.date
-
-#these columns are not identical
-Subset_df2merge$Deduction.date.test5<-Subset_df2merge$Deduction.date.hasbled==Subset_df2merge$Deduction.date
-
-#these columns are not identical
-Subset_df2merge$Deduction.date.test6<-Subset_df2merge$Deduction.date.eligiblepop==Subset_df2merge$Deduction.date
-
-
-#these columns are not identical
-Subset_df2merge$Registration.status.test<-Subset_df2merge$Registration.status.x==Subset_df2merge$Registration.status
-
-#these columns are not identical
-Subset_df2merge$Registration.status.test2<-Subset_df2merge$Registration.status.df3==Subset_df2merge$Registration.status
-
-#these columns are not identical
-Subset_df2merge$Registration.status.test3<-Subset_df2merge$Registration.status.df6==Subset_df2merge$Registration.status
-
-#these columns are not identical
-Subset_df2merge$Registration.status.test4<-Subset_df2merge$Registration.status.df8==Subset_df2merge$Registration.status
-
-#these columns are not identical
-Subset_df2merge$Registration.status.test5<-Subset_df2merge$Registration.status.df8.earliest.chads2.date==Subset_df2merge$Registration.status
-
-#these columns are not identical
-Subset_df2merge$Registration.status.test6<-Subset_df2merge$Registration.status.hasbled==Subset_df2merge$Registration.status
-
-#these columns are not identical
-Subset_df2merge$Registration.status.test7<-Subset_df2merge$Registration.status.eligiblepop==Subset_df2merge$Registration.status
-
-
-#these columns are not identical
-Subset_df2merge$Registration.date.test<-Subset_df2merge$Registration.date.x==Subset_df2merge$Registration.date
-
-#these columns are not identical
-Subset_df2merge$Registration.date.test2<-Subset_df2merge$Registration.date.hasbled==Subset_df2merge$Registration.date
-
-#these columns are not identical
-Subset_df2merge$Registration.date.test3<-Subset_df2merge$Registration.date.eligiblepop==Subset_df2merge$Registration.date
-
-#rename non-identical duplicated columns
-df2merge<-rename(df2merge,Deduction.date.AC="Deduction.date")
-
-df2merge<-rename(df2merge,Registration.status.AC="Registration.status")
-
-df2merge<-rename(df2merge,Registration.date.AC="Registration.date")
-
-#delete identical duplicated columns in df2merge
-df2merge<-df2merge[,-c(111:113,116)]
-
 
 
 #assign df11 to df11merge2
@@ -971,14 +577,16 @@ df11merge2_subset<-df11merge2[complete.cases(df11merge2$anticoagulation.issue.st
 
 #in df11merge2_subset show for a unique patient 
 #latest anticoagulation event date before af diagnosis/event date
-df11merge2_subset<-df11merge2_subset %>% group_by(Patient.ID) %>% 
-  slice(which.max(anticoagulation.issue.start.date.before.af.diagnosis.date))
+df11merge2_subset<-df11merge2_subset %>% 
+  group_by(Patient.ID) %>% 
+  slice(which.max(anticoagulation.issue.start.date.before.af.diagnosis.date))%>%
+  ungroup()
 
 #rename anticoagulation.issue.start.date.before.af.diagnosis.date to latest.anticoagulation.issue.start.date.before.af.diagnosis.date
 df11merge2_subset<-rename(df11merge2_subset,latest.anticoagulation.issue.start.date.before.af.diagnosis.date="anticoagulation.issue.start.date.before.af.diagnosis.date")
 
 #del cols in df11merge2_subset i.e event.date
-df11merge2_subset<-df11merge2_subset[,-c(20)]
+df11merge2_subset<-df11merge2_subset[,-c(12:17,19:20)]
 
 #rename the following cols in df11merge2_subset
 df11merge2_subset<-rename(df11merge2_subset,Anticoagulation.Event.done.at2="Event.done.at")
@@ -1006,106 +614,6 @@ df11merge2_subset<-rename(df11merge2_subset,Repeat.drug2="Repeat.drug")
 #leftjoin df11merge2_subset into df2merge by patient ID
 df2merge<-left_join(x=df2merge,y=df11merge2_subset,by="Patient.ID",copy = FALSE)
 
-#create Subset_df2merge where there are no NAs in the latest.anticoagulation.issue.start.date.before.af.diagnosis.date column
-Subset_df2merge<-df2merge[complete.cases(df2merge$latest.anticoagulation.issue.start.date.before.af.diagnosis.date),]
-
-#create new columns to test if merged in duplicated columns from df11merge2_subset are identical to those
-#already in Subset_df2merge,true =identical , false = not identical
-#duplicated cols from df11merge2_subset are:
-#"Deduction.date"                                          
-#"Registered.CCG"                                          
-#"Registered.practice"                                     
-#"Registered.practice.ID"                                  
-#"Registration.date"                                       
-#"Registration.status"                                     
-#"Patient.Count"       
-
-#these columns are identical
-Subset_df2merge$Registered.practice.ID.test<-Subset_df2merge$Registered.practice.ID.x==Subset_df2merge$Registered.practice.ID
-
-#these columns are identical
-Subset_df2merge$Patient.Count.test<-Subset_df2merge$Patient.Count.x==Subset_df2merge$Patient.Count
-
-#these columns are identical
-Subset_df2merge$Registered.CCG.test<-Subset_df2merge$Registered.CCG.x==Subset_df2merge$Registered.CCG
-
-#these columns are identical
-Subset_df2merge$Registered.practice.test<-Subset_df2merge$Registered.practice.x==Subset_df2merge$Registered.practice
-
-
-
-#these columns are not identical
-Subset_df2merge$Deduction.date.test<-Subset_df2merge$Deduction.date.x==Subset_df2merge$Deduction.date
-
-#these columns are not identical
-Subset_df2merge$Deduction.date.test2<-Subset_df2merge$Deduction.date.df6==Subset_df2merge$Deduction.date
-
-#these columns are not identical
-Subset_df2merge$Deduction.date.test3<-Subset_df2merge$Deduction.date.df8==Subset_df2merge$Deduction.date
-
-#these columns are not identical
-Subset_df2merge$Deduction.date.test4<-Subset_df2merge$Deduction.date.df8.earliest.chads2.date==Subset_df2merge$Deduction.date
-
-#these columns are not identical
-Subset_df2merge$Deduction.date.test5<-Subset_df2merge$Deduction.date.hasbled==Subset_df2merge$Deduction.date
-
-#these columns are not identical
-Subset_df2merge$Deduction.date.test6<-Subset_df2merge$Deduction.date.eligiblepop==Subset_df2merge$Deduction.date
-
-#i think these cols are identical but for time being i will still rename the duplicate
-Subset_df2merge$Deduction.date.test7<-Subset_df2merge$Deduction.date.AC==Subset_df2merge$Deduction.date
-
-
-
-#these columns are not identical
-Subset_df2merge$Registration.status.test<-Subset_df2merge$Registration.status.x==Subset_df2merge$Registration.status
-
-#these columns are not identical
-Subset_df2merge$Registration.status.test2<-Subset_df2merge$Registration.status.df3==Subset_df2merge$Registration.status
-
-#these columns are not identical
-Subset_df2merge$Registration.status.test3<-Subset_df2merge$Registration.status.df6==Subset_df2merge$Registration.status
-
-#these columns are not identical
-Subset_df2merge$Registration.status.test4<-Subset_df2merge$Registration.status.df8==Subset_df2merge$Registration.status
-
-#these columns are not identical
-Subset_df2merge$Registration.status.test5<-Subset_df2merge$Registration.status.df8.earliest.chads2.date==Subset_df2merge$Registration.status
-
-#these columns are not identical
-Subset_df2merge$Registration.status.test6<-Subset_df2merge$Registration.status.hasbled==Subset_df2merge$Registration.status
-
-#these columns are not identical
-Subset_df2merge$Registration.status.test7<-Subset_df2merge$Registration.status.eligiblepop==Subset_df2merge$Registration.status
-
-#i think these cols are identical but for time being i will still rename the duplicate
-Subset_df2merge$Registration.status.test8<-Subset_df2merge$Registration.status.AC==Subset_df2merge$Registration.status
-
-
-
-#these columns are not identical
-Subset_df2merge$Registration.date.test<-Subset_df2merge$Registration.date.x==Subset_df2merge$Registration.date
-
-#these columns are not identical
-Subset_df2merge$Registration.date.test2<-Subset_df2merge$Registration.date.hasbled==Subset_df2merge$Registration.date
-
-#these columns are not identical
-Subset_df2merge$Registration.date.test3<-Subset_df2merge$Registration.date.eligiblepop==Subset_df2merge$Registration.date
-
-#i think these cols are identical but for time being i will still rename the duplicate
-Subset_df2merge$Registration.date.test4<-Subset_df2merge$Registration.date.AC==Subset_df2merge$Registration.date
-
-
-#rename duplicated columns
-df2merge<-rename(df2merge,Deduction.date.AC2="Deduction.date")
-
-df2merge<-rename(df2merge,Registration.status.AC2="Registration.status")
-
-df2merge<-rename(df2merge,Registration.date.AC2="Registration.date")
-
-
-#delete identical duplicated columns in df2merge
-df2merge<-df2merge[,-c(126:128,131)]
 
 
 #assign data_frames[[12]] to df12
@@ -1129,43 +637,72 @@ df12merge_subset<-df12merge[complete.cases(df12merge$antiplatelet.issue.start.da
 
 #for a unique patient show
 #earliest antiplatelet issue start date, that is same day or after af event/diagnosis date
-df12merge_subset<-df12merge_subset %>% group_by(Patient.ID) %>% 
-  slice(which.min(antiplatelet.issue.start.date.sameday.as.or.after.af.diagnosis.date))
+df12merge_subset<-df12merge_subset %>% 
+  group_by(Patient.ID) %>% 
+  slice(which.min(antiplatelet.issue.start.date.sameday.as.or.after.af.diagnosis.date))%>%
+  ungroup()
 
 #rename antiplatelet.issue.start.date.sameday.as.or.after.af.diagnosis.date to earliest.antiplatelet.issue.start.date.sameday.as.or.after.af.diagnosis.date
 df12merge_subset<-rename(df12merge_subset,earliest.antiplatelet.issue.start.date.sameday.as.or.after.af.diagnosis.date="antiplatelet.issue.start.date.sameday.as.or.after.af.diagnosis.date")
 
 
 #del cols in df12merge_subset i.e event.date,   
-df12merge_subset<-df12merge_subset[,-c(17)]
+df12merge_subset<-df12merge_subset[,-c(1:3,16:17)]
 
 #leftjoin df12merge_subset into df2merge by patient id
 df2merge<-left_join(x=df2merge,y=df12merge_subset,by="Patient.ID",copy = FALSE)
 
-#create Subset_df2merge where there are no NAs in the earliest.antiplatelet.event.date.sameday.as.or.after.af.diagnosis.date column
-Subset_df2merge<-df2merge[complete.cases(df2merge$earliest.antiplatelet.issue.start.date.sameday.as.or.after.af.diagnosis.date),]
+#note for df4 and df5 below, if we are provided with more than just the most recent read code delete the code  
+#below and left joing the age col from df2merge into the the separate data frames
 
-#using Subset_df2merge , create new columns to test if merged in duplicated columns from df12merge_subset are identical to those
-#already in df2merge,true =identical , false = not identical
-#duplicated cols from df12merge_subset are:
-#"Registered.CCG"                                          
-#"Registered.practice"                                     
-#"Registered.practice.ID"                                  
-#"Patient.Count"       
+#assign data_frames[[4]] to df4
+df4<-data_frames[[4]]
 
-#these columns are identical
-Subset_df2merge$Registered.practice.ID.test<-Subset_df2merge$Registered.practice.ID.x==Subset_df2merge$Registered.practice.ID
+#assign df4 to df4merge
+df4merge<-df4
 
-#these columns are identical
-Subset_df2merge$Patient.Count.test<-Subset_df2merge$Patient.Count.x==Subset_df2merge$Patient.Count
+#for a unique patient show
+#latest event.date i.e. most recent ecg i.e. a.	The read codes options are
+#i.	Electrocardiography (32..)
+#ii.	ECG interpretation (XM0AE)
+#iii.	ECG: presence findings (Xa7s8)
 
-#these columns are identical
-Subset_df2merge$Registered.CCG.test<-Subset_df2merge$Registered.CCG.x==Subset_df2merge$Registered.CCG
+df4merge_subset<-df4merge %>% 
+  group_by(Patient.ID) %>% 
+  slice(which.max(Event.date))%>%
+  ungroup()
 
-#these columns are identical
-Subset_df2merge$Registered.practice.test<-Subset_df2merge$Registered.practice.x==Subset_df2merge$Registered.practice
+#rename Event.date to afatriskecgeventdate
+df4merge_subset<-rename(df4merge_subset,afatriskecgeventdate="Event.date")
 
-#delete identical duplicated columns in df2merge
-df2merge<-df2merge[,-c(129:131,143)]
+#del cols in df4merge_subset    
+df4merge_subset<-df4merge_subset[,-c(1,3:10,12)]
 
+#leftjoin df4merge_subset into df2merge by patient id
+df2merge<-left_join(x=df2merge,y=df4merge_subset,by="Patient.ID",copy = FALSE)
 
+#assign data_frames[[5]] to df5
+df5<-data_frames[[5]]
+
+#assign df5 to df5merge
+df5merge<-df5
+
+#for a unique patient show
+#latest event.date i.e. most recent ecg i.e. a.	The read codes options are
+#i.	Electrocardiography (32..)
+#ii.	ECG interpretation (XM0AE)
+#iii.	ECG: presence findings (Xa7s8)
+
+df5merge_subset<-df5merge %>% 
+  group_by(Patient.ID) %>% 
+  slice(which.max(Event.date))%>%
+  ungroup()
+
+#rename Event.date to populationecgeventdate
+df5merge_subset<-rename(df5merge_subset,populationecgeventdate="Event.date")
+
+#del cols in df5merge_subset    
+df5merge_subset<-df5merge_subset[,-c(1,3:10,12)]
+
+#leftjoin df5merge_subset into df2merge by patient id
+df2merge<-left_join(x=df2merge,y=df5merge_subset,by="Patient.ID",copy = FALSE)
