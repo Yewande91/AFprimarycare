@@ -6,7 +6,7 @@ in_brackets <- "\\([^()]+\\)"
 
 #create new col called df2merge$EthnicityCode and extract first match to in_brackets in df2merge$Ethnicity.x col
 #note df2merge$Ethnicity.x used and not df2merge$Ethnicity.df6 
-df2merge$EthnicityCode<- str_extract(df2merge$Ethnicity.x, in_brackets)
+df2merge$EthnicityCode<- str_extract(df2merge$Ethnicity, in_brackets)
 
 #remove the brackets
 df2merge$EthnicityCode<-substring(df2merge$EthnicityCode, 2, nchar(df2merge$EthnicityCode)-1)
