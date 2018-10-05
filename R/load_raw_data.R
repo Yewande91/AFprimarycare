@@ -2,7 +2,7 @@
 library(tidyverse)
 
 #function to find file names with a data-raw/AF_Data_ extension
-fileNames<-Sys.glob("data-raw/AF_Data_*.csv")
+fileNames<-Sys.glob("data-old/AF_Data_*.csv")
 
 #create a function to load data files
 load_data_files<-function(fN){
