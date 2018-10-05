@@ -7,6 +7,10 @@
 /data-raw/*.xls*
 /data-raw/*.csv
 
+
+/data-old/*.xls*
+/data-old/*.csv
+
 /data/*.xls*
 /data/*.csv
 /data/*.rda
