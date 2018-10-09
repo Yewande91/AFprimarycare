@@ -1,4 +1,4 @@
-#ignore data_frames[[1]]
+##ignore data_frames[[1]]
 
 #data_frames[[2]] shows patients on practice list registered before date data was run
 #assign data_frames[[2]] to df2 
@@ -6,12 +6,13 @@ df2<-data_frames[[2]]
 
 #registration date
 #for vignette
-#how many registration dates in df2 are greater than 2017-11-16  i.e. date data was run or
+#how many registration dates in df2 are greater than 2018-09-10  i.e. date data was run or
 #with no registration date at all?
-#answer is 3311
-df2_reg_date_greater_than_date_data_was_run_or_no_reg_date<-subset(df2,df2$Registration.date>"2017-11-16"|is.na(df2$Registration.date))
+#answer is 3276
+df2_reg_date_greater_than_date_data_was_run_or_no_reg_date<-subset(df2,df2$Registration.date>"2018-09-10"|
+                                                                     is.na(df2$Registration.date))
 
-#na_rm_min function if only na for a specific patient it will return na, if a mix of a date 
+#na_rm_min function, if only na for a specific patient it will return na, if a mix of a date 
 #and na it will return minimum date
 na_rm_min <- function(x) {
   x_no_na <- x[!is.na(x)]
@@ -25,41 +26,47 @@ na_rm_min <- function(x) {
 #for vignette
 #in df2_reg_date_greater_than_date_data_was_run_or_no_reg_date_or_no_reg_date remove duplicate ids
 #there are no duplicate ids
-df2_reg_date_greater_than_date_data_was_run_or_no_reg_date<-df2_reg_date_greater_than_date_data_was_run_or_no_reg_date %>% 
+df2_reg_date_greater_than_date_data_was_run_or_no_reg_date<-
+  df2_reg_date_greater_than_date_data_was_run_or_no_reg_date %>% 
   group_by(Patient.ID) %>% 
   summarise(df2_reg_date_min=na_rm_min(Registration.date))%>%
   ungroup()
 
 #for vignette
-#find out how many of the 3311 registered patients have an AF diagnosis using df6
+#how many of the 3276 registered patients have an AF diagnosis using df6?
+#106 have an af diagnosis date
+
 #data_frames[[6]] shows patients diagnosed with Atrial Fibrillation before date data was run
-#104 have an af diagnosis date
 df6<-data_frames[[6]]
+
 df6test<-df6 %>% 
   group_by(Patient.ID) %>% 
   summarise(af_diagnosis_date = na_rm_min(Event.date))%>%
   ungroup()
 
-df2_reg_date_greater_than_date_data_was_run_or_no_reg_date<-left_join(x=df2_reg_date_greater_than_date_data_was_run_or_no_reg_date,
-                                                       y=df6test,by="Patient.ID",copy = FALSE)
-df2_reg_date_greater_than_date_data_was_run_or_no_reg_date_AF_only<-subset(df2_reg_date_greater_than_date_data_was_run_or_no_reg_date,
-                                                            (!is.na(df2_reg_date_greater_than_date_data_was_run_or_no_reg_date[,3])))
+df2_reg_date_greater_than_date_data_was_run_or_no_reg_date<-
+  left_join(x=df2_reg_date_greater_than_date_data_was_run_or_no_reg_date,y=df6test,by="Patient.ID",copy = FALSE)
+
+df2_reg_date_greater_than_date_data_was_run_or_no_reg_date_AF_only<-
+  subset(df2_reg_date_greater_than_date_data_was_run_or_no_reg_date,
+         (!is.na(df2_reg_date_greater_than_date_data_was_run_or_no_reg_date[,3])))
+
 #for the vignette
-#show distribution of the 104 af diagnosis dates to see if they are spread out in the entire study period 
-# 2011-01-01 to 2017-10-31
+#show distribution of the 106 af diagnosis dates to see if they are spread out in the entire study period 
+# 2011-01-01 to 2018-08-31 
 #or all concentrated before of after the intervention period (October 2014) as that may cause bias
 library(lubridate)
 library(ggplot2)
 qplot(year(af_diagnosis_date), data=df2_reg_date_greater_than_date_data_was_run_or_no_reg_date_AF_only, geom = "bar")
 
 
-#filter first to remove reg dates greater than 2017-11-16 and  blank reg dtaes
+#filter first to remove reg dates greater than 2018-09-10 and  blank reg dtaes
 #group by patient id
 #Remove duplicate patient ids in df2 to retain the earliest registration date
 library(tidyverse)
 df2merge<-df2 %>%
-  filter(Registration.date<=as.Date("2017-11-16",format="%Y-%m-%d")) %>%
-           group_by(Patient.ID) %>% 
+  filter(Registration.date<=as.Date("2018-09-10",format="%Y-%m-%d")) %>%
+  group_by(Patient.ID) %>% 
   slice(which.min(Registration.date)) %>%
   ungroup()
 
@@ -70,8 +77,8 @@ df2merge<-df2 %>%
 #[13] "Patient.Count"          "RecodedSex"     
 
 #for the vignette
-#how many of the 3311 patients still remain in the sliced df2merge, answer is 193 patients remain, of which
-# 18 have an AF diagnosis equating to loss of 86 patients diagnosed with AF due to regisration dates being NA
+#how many of the 3276 patients still remain in the sliced df2merge, answer is 217 patients remain, of which
+# 21 have an AF diagnosis equating to loss of 85 patients diagnosed with AF due to regisration dates being NA
 # or registration dates being in the future
 sliced_df2merge<-df2merge
 df2_reg_date_greater_than_date_data_was_run_or_no_reg_date$reg_date_greater_than_date_data_was_run <-c(TRUE)
@@ -87,9 +94,9 @@ df2merge<-df2merge[,-c(1:9,11,13:14)]
 
 #deduction date
 #for the vignette
-#how many deduction dates in df2 are greater than 2017-11-16. 
-#answer is 563
-df2_ded_date_greater_than_date_data_was_run<-subset(df2,df2$Deduction.date>"2017-11-16")
+#how many deduction dates in df2 are greater than 2018-09-10. 
+#answer is 523
+df2_ded_date_greater_than_date_data_was_run<-subset(df2,df2$Deduction.date>"2018-09-10")
 
 #this function finds the max date and returns the row number
 
@@ -104,7 +111,7 @@ na_which_max <- function(x) {
 
 #for the vignette
 #in df2_ded_date_greater_than_date_data_was_run remove duplicate ids
-#answer is 562, so there was only one duplicate
+#no duplicates
 df2_ded_date_greater_than_date_data_was_run<-df2_ded_date_greater_than_date_data_was_run %>% 
   group_by(Patient.ID) %>% 
   slice(na_which_max(Deduction.date)) %>%
@@ -115,32 +122,36 @@ df2_ded_date_greater_than_date_data_was_run<-df2_ded_date_greater_than_date_data
 df2_ded_date_greater_than_date_data_was_run<-df2_ded_date_greater_than_date_data_was_run[,-c(1:5,7:11,13:14)]
 
 #for the vignette
-#find out how many of the 562  patients with a deduction date have an AF diagnosis using df6
+#find out how many of the 523  patients with a deduction date greater than date data was run have an 
+#AF diagnosis using df6
 #answer is only 1 has an af diagnosis date 
 
-df2_ded_date_greater_than_date_data_was_run<-left_join(x=df2_ded_date_greater_than_date_data_was_run,y=df6test,by="Patient.ID",copy = FALSE)
-df2_ded_date_greater_than_date_data_was_run_AF_only<-subset(df2_ded_date_greater_than_date_data_was_run,(!is.na(df2_ded_date_greater_than_date_data_was_run[,3])))
+df2_ded_date_greater_than_date_data_was_run<-
+  left_join(x=df2_ded_date_greater_than_date_data_was_run,y=df6test,by="Patient.ID",copy = FALSE)
+
+df2_ded_date_greater_than_date_data_was_run_AF_only<-
+  subset(df2_ded_date_greater_than_date_data_was_run,(!is.na(df2_ded_date_greater_than_date_data_was_run[,3])))
 
 
-#filter first to remove deduction dates greater than 2017-11-16
+#filter first to remove deduction dates greater than 2018-09-10
 #group by patient id
 #Remove duplicate patient ids in df2 to retain the latest deduction date or NAs
 
 df2_ded_date<-df2 %>%
-  filter(Deduction.date<="2017-11-16"|is.na(Deduction.date)) %>%
+  filter(Deduction.date<="2018-09-10"|is.na(Deduction.date)) %>%
   group_by(Patient.ID) %>% 
   slice(na_which_max(Deduction.date)) %>%
   ungroup()
 
 
 #for the vignette
-#how many of the 562 patients still remain in the sliced df2_ded_date, answer is 218 patients remain, of which
-#  1 have an AF diagnosis equating to loss of 0 patients diagnosed with AF due to deduction dates being 
+#how many of the 523 patients still remain in the sliced df2_ded_date, answer is 181 patients remain, of which
+#  1? have an AF diagnosis equating to loss of 0 patients diagnosed with AF due to deduction dates being 
 #  being after date data was run
 sliced_df2_ded_date<-df2_ded_date
 df2_ded_date_greater_than_date_data_was_run$ded_date_greater_than_date_data_was_run <-c(TRUE)
 sliced_df2_ded_date<-left_join(x=sliced_df2_ded_date,y=df2_ded_date_greater_than_date_data_was_run,
-                           by="Patient.ID",copy = FALSE)
+                               by="Patient.ID",copy = FALSE)
 sliced_df2_ded_date2<-subset(sliced_df2_ded_date,sliced_df2_ded_date$ded_date_greater_than_date_data_was_run=="TRUE")
 sliced_df2_ded_date3<-subset(sliced_df2_ded_date2,(!is.na(sliced_df2_ded_date2[,16])))
 
@@ -154,8 +165,8 @@ df2merge<-left_join(x=df2merge,y=df2_ded_date,by="Patient.ID",copy = FALSE)
 
 #for vignette
 #are all the deduction dates in df2merge after the registration dates
-#answer is 391 where Deduction.date < Registration.date
-#of this 391 patients , 0 have an AF diagnosis so 0 AF diagnosed patients which will be lost
+#answer is 405 where Deduction.date < Registration.date
+#of this 405 patients , 0 have an AF diagnosis so 0 AF diagnosed patients which will be lost
 df2merge_check1<-df2merge %>%
   filter(Deduction.date < Registration.date)
 
@@ -163,7 +174,7 @@ df2merge_check1<-left_join(x=df2merge_check1,y=df6test,by="Patient.ID",copy = FA
 
 df2merge_check1_AF_only<-subset(df2merge_check1,(!is.na(df2merge_check1[,15])))
 
-#remove 391 patients in df2merge where deduction date < registration date
+#remove 405 patients in df2merge where deduction date < registration date
 df2merge<-df2merge %>%
   filter(Deduction.date >= Registration.date | is.na(Deduction.date))
 
@@ -171,10 +182,10 @@ df2merge<-df2merge %>%
 
 #for vignette
 #how many cases are there where the registration and the deduction dates are the same date
-#981 patients 
-#of which 4 have an AF diagnosis
+#987 patients 
+#of which 5 have an AF diagnosis
 #i have chosen to keep these patients in as it could still be plausible to have the same date, so the 
-#4 af diagnosed will not be lost
+#5 af diagnosed will not be lost
 df2merge_check2<-df2merge %>%
   filter(Deduction.date == Registration.date)
 
@@ -186,8 +197,8 @@ df2merge_check2_AF_only<-subset(df2merge_check2,(!is.na(df2merge_check2[,15])))
 
 #for vignette
 #check that if registration status is current , deduction date is NA 
-#there are 3 patients where it says current but the deduction date is not blank 
-#none of these 3 patients have an AF diagnosis
+#there are 37 patients where it says current but the deduction date is not blank 
+#none of these 37 patients have an AF diagnosis
 df2merge_check3<-df2merge %>%
   filter(Registration.status =="Current")
 
@@ -200,9 +211,9 @@ df2merge_check3a_AF_only<-subset(df2merge_check3a,(!is.na(df2merge_check3a[,15])
 
 #check that if registration status  "Deducted", "Deceased, Deducted" or "Deceased" 
 #the deduction date is not NA
-#32 patients where registration status  "Deducted", "Deceased, Deducted" or "Deceased" 
+#29 patients where registration status  "Deducted", "Deceased, Deducted" or "Deceased" 
 #but deduction date is NA
-# 1 of these 32 patients has an AF diagnosis 
+# 2 of these 29 patients has an AF diagnosis 
 df2merge_check4<-df2merge %>%
   filter(Registration.status =="Deducted" | Registration.status =="Deceased, Deducted" |
            Registration.status == "Deceased" )
@@ -215,7 +226,7 @@ df2merge_check4a<-left_join(x=df2merge_check4a,y=df6test,by="Patient.ID",copy = 
 df2merge_check4a_AF_only<-subset(df2merge_check4a,(!is.na(df2merge_check4a[,15])))
 
 #check how many patients where the registration status is NA
-#there are 7 patients where this happens , none of whom have an AF diagnosis
+#there are 5 patients where this happens , none of whom have an AF diagnosis
 #this is because these patients were not in the df2_ded_date merge in as there deduction dates 
 #were greater than the date data was run 
 df2merge_check5<-subset(df2merge,(is.na(df2merge[,12])))
@@ -224,14 +235,14 @@ df2merge_check5a<-left_join(x=df2merge_check5,y=df6test,by="Patient.ID",copy = F
 
 df2merge_check5a_AF_only<-subset(df2merge_check5a,(!is.na(df2merge_check5a[,15])))
 
-# filter out from df2merge the 3 patients where it says current but the deduction date is not blank 
-#and the 32 patients where registration status  "Deducted", "Deceased, Deducted" or "Deceased" but deduction date is NA
-#and the 7 cases where registration ststus is na
+# filter out from df2merge the 37 patients where it says current but the deduction date is not blank 
+#and the 29 patients where registration status  "Deducted", "Deceased, Deducted" or "Deceased" but deduction date is NA
+#and the 5 patients where registration status is na
 df2merge<-df2merge %>%
   filter(Registration.status =="Current" & is.na(Deduction.date) |
            Registration.status =="Deducted" & !is.na(Deduction.date)| 
            Registration.status =="Deceased, Deducted" & !is.na(Deduction.date)|
-            Registration.status == "Deceased" & !is.na(Deduction.date))
+           Registration.status == "Deceased" & !is.na(Deduction.date))
 
 
 
@@ -338,14 +349,14 @@ df8merge<- df8merge %>%
 #create new column in df8merge,if merged in AF event.date is before or same as M07a...Number.of.AF.Patients.with.CHAD2DS2.VAc.Assessment.Documented..Event.date
 #show the chadsvasc date for that row, if not show NA
 df8merge$afeventdatebeforeorsamedayaschadsvasc<-if_else(df8merge$Event.date<=
-                                               df8merge$M07a...Number.of.AF.Patients.with.CHAD2DS2.VAc.Assessment.Documented..Event.date,
-                                             df8merge$M07a...Number.of.AF.Patients.with.CHAD2DS2.VAc.Assessment.Documented..Event.date,as.Date(NA,"%Y-%m-%d"))
+                                                          df8merge$M07a...Number.of.AF.Patients.with.CHAD2DS2.VAc.Assessment.Documented..Event.date,
+                                                        df8merge$M07a...Number.of.AF.Patients.with.CHAD2DS2.VAc.Assessment.Documented..Event.date,as.Date(NA,"%Y-%m-%d"))
 
 
 #create new column in df8merge,if merged in AF event.date is before or same as M07aa...Number.of.AF.Patients.with.Read.code.XaY6i..Event.date
 #show the chadsvasc date for that row , if not show NA
 df8merge$afeventdatebeforeorsamedayaschadsvasc2<-if_else(df8merge$Event.date<=df8merge$M07aa...Number.of.AF.Patients.with.Read.code.XaY6i..Event.date,
-                                              df8merge$M07aa...Number.of.AF.Patients.with.Read.code.XaY6i..Event.date,as.Date(NA,"%Y-%m-%d"))
+                                                         df8merge$M07aa...Number.of.AF.Patients.with.Read.code.XaY6i..Event.date,as.Date(NA,"%Y-%m-%d"))
 
 
 #create a subset of df8merge where either df8merge$afeventdatebeforeorsamedayaschadsvasc  or df8merge$afeventdatebeforeorsamedayaschadsvasc2
@@ -384,7 +395,7 @@ df8duplicate2<-df8
 #check if the two CHADS2 eventdate columns in df8duplicate2 are identical
 #these two cols are not identical
 df8duplicate2$Event.date.test<-as.integer(ifelse(df8duplicate2$M08bb...Number.of.AF.Patients.with.Read.code.XaP9J..Event.date
-                                                ==df8duplicate2$M08ba...Number.of.AF.Patients.with.Cong.heart.fail.hypertens.age.diab.stoke.2.risk.score.Assessment.Documented..Event.date,1,0))
+                                                 ==df8duplicate2$M08ba...Number.of.AF.Patients.with.Cong.heart.fail.hypertens.age.diab.stoke.2.risk.score.Assessment.Documented..Event.date,1,0))
 
 
 #assign df8 to df8merge2
@@ -398,14 +409,14 @@ df8merge2<- df8merge2 %>%
 #create new column in df8merge2,if merged in AF event.date is before or same as M08bb...Number.of.AF.Patients.with.Read.code.XaP9J..Event.date
 #show the chads2 date , if not show NA
 df8merge2$afeventdatebeforeorsamedayaschads2<-if_else(df8merge2$Event.date<=
-                                               df8merge2$M08bb...Number.of.AF.Patients.with.Read.code.XaP9J..Event.date,
-                                             df8merge2$M08bb...Number.of.AF.Patients.with.Read.code.XaP9J..Event.date,as.Date(NA,"%Y-%m-%d"))
+                                                        df8merge2$M08bb...Number.of.AF.Patients.with.Read.code.XaP9J..Event.date,
+                                                      df8merge2$M08bb...Number.of.AF.Patients.with.Read.code.XaP9J..Event.date,as.Date(NA,"%Y-%m-%d"))
 
 #create new column in df8merge2,if merged in AF event.date is before or same as M08ba...Number.of.AF.Patients.with.Cong.heart.fail.hypertens.age.diab.stoke.2.risk.score.Assessment.Documented..Event.date
 #show the chads2 date , if not show NA
 df8merge2$afeventdatebeforeorsamedayaschads2col2<-if_else(df8merge2$Event.date<=
-                                                df8merge2$M08ba...Number.of.AF.Patients.with.Cong.heart.fail.hypertens.age.diab.stoke.2.risk.score.Assessment.Documented..Event.date,
-                                              df8merge2$M08ba...Number.of.AF.Patients.with.Cong.heart.fail.hypertens.age.diab.stoke.2.risk.score.Assessment.Documented..Event.date,as.Date(NA,"%Y-%m-%d"))
+                                                            df8merge2$M08ba...Number.of.AF.Patients.with.Cong.heart.fail.hypertens.age.diab.stoke.2.risk.score.Assessment.Documented..Event.date,
+                                                          df8merge2$M08ba...Number.of.AF.Patients.with.Cong.heart.fail.hypertens.age.diab.stoke.2.risk.score.Assessment.Documented..Event.date,as.Date(NA,"%Y-%m-%d"))
 
 #create a subset of df8merge2, where either df8merge2$afeventdatebeforeorsamedayaschads2 or df8merge2$afeventdatebeforeorsamedayaschads2col2
 #have no NAs
@@ -451,8 +462,8 @@ df9merge<-left_join(df9merge,select(.data=df2merge,Patient.ID, Event.date),by="P
 #create new col in df9merge to check if af diagnosis event date is before hasbled date in 
 #column M10a...Number.of.AF.patients.with.HAS.BLED.Assessment.Documented..Event.date
 df9merge$afeventdatebeforehasbled<-if_else(df9merge$Event.date<=
-                                               df9merge$M10a...Number.of.AF.patients.with.HAS.BLED.Assessment.Documented..Event.date,
-                                             df9merge$M10a...Number.of.AF.patients.with.HAS.BLED.Assessment.Documented..Event.date,as.Date(NA,"%Y-%m-%d"))
+                                             df9merge$M10a...Number.of.AF.patients.with.HAS.BLED.Assessment.Documented..Event.date,
+                                           df9merge$M10a...Number.of.AF.patients.with.HAS.BLED.Assessment.Documented..Event.date,as.Date(NA,"%Y-%m-%d"))
 
 #create df9merge_subset where there are no NAs for afeventdatebeforehasbled column
 df9merge_subset<-df9merge[complete.cases(df9merge$afeventdatebeforehasbled),]
@@ -478,7 +489,7 @@ df10merge<-df10
 
 #rename M12...Number.of.Patients.with.AF.who.have.a.CHAD2DS2.VAc.Score.over.the.threshold.and.HAS.BLED.Score.under.Threshold...Patient.ID
 #col in df10merge to Patient.ID
-df10merge<-rename(df10merge,Patient.ID="M12...Number.of.Patients.with.AF.who.have.a.CHAD2DS2.VAc.Score.over.the.threshold.and.HAS.BLED.Score.under.Threshold...Patient.ID")
+df10merge<-rename(df10merge,Patient.ID="M12...Number.of.Patients.with.AF.who.have.a.CHAD2DS2.VAc.Score.over.the.threshold.and.HAS.BLED.Score.under.Threshold..Patient.ID")
 
 #left join patient id and earliest.chadsvasc.date from df2merge into df10merge
 df10merge<-left_join(df10merge,select(.data=df2merge,Patient.ID,earliest.chadsvasc.date),by="Patient.ID",copy = FALSE)
@@ -493,7 +504,7 @@ df10merge$female.chadsvasc.event.date.same.as.earliest.chadsvasc.date<-if_else(d
 #from df10merge is same as the merged in earliest.chadsvasc.date
 #returning back chadsvasc date if true
 df10merge$male.chadsvasc.event.date.same.as.earliest.chadsvasc.date<-if_else(df10merge$M12a...WMUH.Number.of.Newly.Diagnosed.AF.Patients.with.CHAD2DS2.VAc.Score.over.the.threshold.and.HAS.BLED.Score.under.Threshold..Males...Event.date==
-                                                                                 df10merge$earliest.chadsvasc.date,df10merge$M12a...WMUH.Number.of.Newly.Diagnosed.AF.Patients.with.CHAD2DS2.VAc.Score.over.the.threshold.and.HAS.BLED.Score.under.Threshold..Males...Event.date,as.Date(NA,"%Y-%m-%d"))
+                                                                               df10merge$earliest.chadsvasc.date,df10merge$M12a...WMUH.Number.of.Newly.Diagnosed.AF.Patients.with.CHAD2DS2.VAc.Score.over.the.threshold.and.HAS.BLED.Score.under.Threshold..Males...Event.date,as.Date(NA,"%Y-%m-%d"))
 
 #create a new column which contains (male or female) chadsvasc dates for the eligible population (i.e.eligible population is af patients with chadsvasc over teh threshold and hasbled under the threshold)
 df10merge<-df10merge%>%
@@ -652,34 +663,10 @@ df12merge_subset<-df12merge_subset[,-c(1:3,16:17)]
 #leftjoin df12merge_subset into df2merge by patient id
 df2merge<-left_join(x=df2merge,y=df12merge_subset,by="Patient.ID",copy = FALSE)
 
-#note for df4 and df5 below, if we are provided with more than just the most recent read code delete the code  
+#ignore data_frames[[4]]
+
+#note for  df5 below, if we are provided with more than just the most recent read code delete the code  
 #below and left joing the age col from df2merge into the the separate data frames
-
-#assign data_frames[[4]] to df4
-df4<-data_frames[[4]]
-
-#assign df4 to df4merge
-df4merge<-df4
-
-#for a unique patient show
-#latest event.date i.e. most recent ecg i.e. a.	The read codes options are
-#i.	Electrocardiography (32..)
-#ii.	ECG interpretation (XM0AE)
-#iii.	ECG: presence findings (Xa7s8)
-
-df4merge_subset<-df4merge %>% 
-  group_by(Patient.ID) %>% 
-  slice(which.max(Event.date))%>%
-  ungroup()
-
-#rename Event.date to afatriskecgeventdate
-df4merge_subset<-rename(df4merge_subset,afatriskecgeventdate="Event.date")
-
-#del cols in df4merge_subset    
-df4merge_subset<-df4merge_subset[,-c(1,3:10,12)]
-
-#leftjoin df4merge_subset into df2merge by patient id
-df2merge<-left_join(x=df2merge,y=df4merge_subset,by="Patient.ID",copy = FALSE)
 
 #assign data_frames[[5]] to df5
 df5<-data_frames[[5]]
@@ -687,22 +674,24 @@ df5<-data_frames[[5]]
 #assign df5 to df5merge
 df5merge<-df5
 
-#for a unique patient show
-#latest event.date i.e. most recent ecg i.e. a.	The read codes options are
+#rename Event.date to populationecgeventdate
+df5merge<-rename(df5merge,populationecgeventdate="Event.date")
+
+#rename Event.date to populationecgeventdate
+df5merge<-rename(df5merge,ECG.Event.done.at="Event.done.at")
+
+#rename Event.date to populationecgeventdate
+df5merge<-rename(df5merge,ECG.Event.done.at.ID="Event.done.at.ID")
+
+#del cols in df5merge_subset that are already in  
+df5merge_subset<-df5merge[,-c(5:10,12)]
+
+#left join all columns in df2merge to df5merge_subset in order to retain all the rows for ECGs
+df5merge_subset<-left_join(x=df5merge_subset,y=df2merge,by="Patient.ID",copy = FALSE)
+
+
+#The read codes options are
 #i.	Electrocardiography (32..)
 #ii.	ECG interpretation (XM0AE)
 #iii.	ECG: presence findings (Xa7s8)
 
-df5merge_subset<-df5merge %>% 
-  group_by(Patient.ID) %>% 
-  slice(which.max(Event.date))%>%
-  ungroup()
-
-#rename Event.date to populationecgeventdate
-df5merge_subset<-rename(df5merge_subset,populationecgeventdate="Event.date")
-
-#del cols in df5merge_subset    
-df5merge_subset<-df5merge_subset[,-c(1,3:10,12)]
-
-#leftjoin df5merge_subset into df2merge by patient id
-df2merge<-left_join(x=df2merge,y=df5merge_subset,by="Patient.ID",copy = FALSE)
