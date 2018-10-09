@@ -1,4 +1,4 @@
-#create new ethnicity column with only ethnicity code ID
+##create new ethnicity column with only ethnicity code ID
 library(stringr)
 
 #regex \\ beginning of a word, ^ start of a string, + matches at least one time, \\ end of a word ???
