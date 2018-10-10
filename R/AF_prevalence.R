@@ -1,4 +1,4 @@
-#open "readxl" to use "read_excel" function
+##open "readxl" to use "read_excel" function
 library(readxl)
 
 #import AF prevalence data for Hounslow from QOF website
