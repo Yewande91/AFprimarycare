@@ -19,9 +19,7 @@ df2mergev1<-select(.data=df2merge,
                    earliest.anticoagulation.issue.start.date.sameday.or.after.af.diagnosis.date,
                    latest.anticoagulation.issue.start.date.before.af.diagnosis.date,
                    earliest.antiplatelet.issue.start.date.sameday.as.or.after.af.diagnosis.date,
-                   Patient.ID,
-                   afatriskecgeventdate,
-                   populationecgeventdate)
+                   Patient.ID)
 
 #rename Event.Date to AF diagnosis date
 df2mergev1<-rename(df2mergev1,AF.diagnosis.date="Event.date")
@@ -49,3 +47,4 @@ setDT(df2mergev1)[ , agegroups2:= cut(Age,
                                       labels = agelabels2)]
 
 save(df2mergev1, file="data/df2mergev1.rda")
+
